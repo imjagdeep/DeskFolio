@@ -1,0 +1,148 @@
+name: Release
+
+# Push a tag like v0.2.0 to build signed installers for every platform.
+# One draft release is created first and every build uploads into it; when
+# all builds succeed the release is published, which is what the in-app
+# updater reads (releases/latest/download/latest.json).
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.id }}
+    steps:
+      - id: create
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          id=$(gh api "repos/${GITHUB_REPOSITORY}/releases" \
+            -f tag_name="$TAG" \
+            -f name="DeskFolio $TAG" \
+            -F draft=true \
+            -f body="Installers for Windows, macOS (Apple Silicon and Intel) and Linux. The macOS builds are signed and notarized by Apple. The Windows and Linux builds are not code-signed yet; see the README for how to open them the first time." \
+            --jq .id)
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target aarch64-apple-darwin
+            rust_targets: aarch64-apple-darwin
+          - platform: macos-latest
+            args: --target x86_64-apple-darwin
+            rust_targets: x86_64-apple-darwin
+          - platform: ubuntu-22.04
+            args: ""
+            rust_targets: ""
+          - platform: windows-latest
+            args: ""
+            rust_targets: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - run: npm test
+
+      - name: Rust tests
+        working-directory: src-tauri
+        run: cargo test
+
+      # Notarization key (.p8) as a file for the Apple tools.
+      - name: Apple notarization key
+        if: runner.os == 'macOS'
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+          echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS: sign with the Developer ID certificate, then notarize with
+          # the App Store Connect API key, so Gatekeeper opens it without a warning.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          # Signs the update packages; the matching public key is in tauri.conf.json.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          args: ${{ matrix.args }}
+          # Parallel jobs editing one latest.json raced (v0.3.2 lost Linux and
+          # macOS). The publish job writes it once from the .sig files instead.
+          uploadUpdaterJson: false
+
+  publish:
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write latest.json (the in-app updater feed) and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ID: ${{ needs.create-release.outputs.release_id }}
+          TAG: ${{ github.ref_name }}
+        shell: python
+        run: |
+          import json, os, subprocess, datetime
+          repo, tag, rid = os.environ["GITHUB_REPOSITORY"], os.environ["TAG"], os.environ["ID"]
+          v = tag.lstrip("v")
+          subprocess.run(["gh", "release", "download", tag, "-R", repo, "-p", "*.sig", "-D", "sigs"], check=True)
+          sig = lambda f: open(os.path.join("sigs", f + ".sig"), encoding="utf-8").read()
+          base = f"https://github.com/{repo}/releases/latest/download/"
+          files = {
+              "darwin-aarch64": "DeskFolio_aarch64.app.tar.gz",
+              "darwin-aarch64-app": "DeskFolio_aarch64.app.tar.gz",
+              "darwin-x86_64": "DeskFolio_x64.app.tar.gz",
+              "darwin-x86_64-app": "DeskFolio_x64.app.tar.gz",
+              "linux-x86_64": f"DeskFolio_{v}_amd64.AppImage",
+              "linux-x86_64-appimage": f"DeskFolio_{v}_amd64.AppImage",
+              "linux-x86_64-deb": f"DeskFolio_{v}_amd64.deb",
+              "windows-x86_64": f"DeskFolio_{v}_x64-setup.exe",
+              "windows-x86_64-nsis": f"DeskFolio_{v}_x64-setup.exe",
+          }
+          feed = {
+              "version": v,
+              "notes": "",
+              "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+              "platforms": {k: {"signature": sig(f), "url": base + f} for k, f in files.items()},
+          }
+          json.dump(feed, open("latest.json", "w"), indent=2)
+          subprocess.run(["gh", "release", "upload", tag, "-R", repo, "latest.json", "--clobber"], check=True)
+          subprocess.run(["gh", "api", "-X", "PATCH", f"repos/{repo}/releases/{rid}", "-F", "draft=false"], check=True)
