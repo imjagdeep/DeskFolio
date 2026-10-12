@@ -60,7 +60,7 @@ button.dropzone:hover { border-color: var(--text-3); filter: none; }
 .search-hit:hover:not(:disabled) { background: var(--hover); filter: none; }
 
 /* pdf.js text layer: invisible text over the drawing, for selecting and copying */
-.textLayer { position: absolute; text-align: initial; inset: 0; overflow: clip; opacity: 1; line-height: 1; transform-origin: 0 0; z-index: 0; --min-font-size: 1; --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size)); --min-font-size-inv: calc(1 / var(--min-font-size)); }
+.textLayer { position: absolute; text-align: initial; inset: 0; overflow: clip; opacity: 1; line-height: 1; transform-origin: 0 0; z-index: 0; --min-font-size: 1; --scale-round-x: 1px; --scale-round-y: 1px; --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size)); --min-font-size-inv: calc(1 / var(--min-font-size)); }
 .textLayer :is(span, br) { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; user-select: text; }
 .textLayer > :not(.markedContent), .textLayer .markedContent span:not(.markedContent) { z-index: 1; --font-height: 0; font-size: calc(var(--text-scale-factor) * var(--font-height)); --scale-x: 1; --rotate: 0deg; transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv)); }
 .textLayer .markedContent { display: contents; }
@@ -156,3 +156,10 @@ button.dropzone:hover { border-color: var(--text-3); filter: none; }
 .file-list li:last-child { border-bottom: none; }
 .progress { height: 4px; border-radius: 2px; background: var(--group); overflow: hidden; margin-top: 6px; }
 .progress > div { height: 100%; background: var(--accent); transition: width 0.2s; }
+
+/* pdf.js lays a rotated page's text out unrotated and marks the layer with
+   data-main-rotation; these turn it to match the drawn page (as in pdf.js's
+   own viewer). Without them, text on rotated pages lands in the wrong place. */
+.textLayer[data-main-rotation="90"] { transform: rotate(90deg) translateY(-100%); }
+.textLayer[data-main-rotation="180"] { transform: rotate(180deg) translate(-100%, -100%); }
+.textLayer[data-main-rotation="270"] { transform: rotate(270deg) translateX(-100%); }

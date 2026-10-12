@@ -16,8 +16,8 @@
 | **Split** | By page ranges, every N pages, or one file per page |
 | **Compress** | Light, Balanced or Strong: photos are re-saved smaller, text and drawings stay sharp; never makes a file bigger |
 | **Fill & Sign** | Type into PDF forms (optionally lock them afterwards); add text, dates, check marks and your signature (drawn, typed or from an image, kept on your computer) |
-| **Convert** *(coming)* | PDF to Word, Excel, text or images; images to PDF; Word/Excel/PowerPoint to PDF using Microsoft Office or LibreOffice if installed |
-| **OCR** *(coming)* | Make scanned PDFs searchable (English built in) |
+| **Convert** | PDF to Word (headings, paragraphs, simple tables), Excel (tables, real numbers), text or PNG/JPG pages; pictures to PDF; Word/Excel/PowerPoint to PDF using Microsoft Office or LibreOffice if installed |
+| **OCR** | Make scanned PDFs searchable: the pages look the same, but their text can be found, selected and copied (English built in, offline) |
 
 Every change can be undone while the file is open, and nothing is written to disk until you choose **Save as** (or **Save over original**, which asks first).
 
@@ -26,6 +26,9 @@ Every change can be undone while the file is open, and nothing is written to dis
 - Signatures are visual, like signing on paper. They are not certificate-based digital signatures.
 - Added text uses a built-in Latin font for now; other scripts get a clear message instead of broken text.
 - Compress only re-saves ordinary photos (RGB or greyscale); other image kinds are left exactly as they are.
+- PDF to Word/Excel rebuilds the document from its text, so complex layouts, columns and fonts won't match exactly. Pages without text (scans) go into Word as pictures; run OCR first for editable text.
+- Office to PDF needs Microsoft Office (Windows) or LibreOffice; DeskFolio doesn't include either.
+- OCR reads English. Handwriting and very faint scans may not be read well.
 
 ## Building from source
 
@@ -38,7 +41,7 @@ npm run tauri dev   # run the app
 npm run tauri build # installers in src-tauri/target/release/bundle/
 ```
 
-Built with [Tauri](https://tauri.app), [pdf.js](https://mozilla.github.io/pdf.js/), [pdf-lib](https://github.com/cantoo-scribe/pdf-lib) and [lopdf](https://github.com/J-F-Liu/lopdf).
+Built with [Tauri](https://tauri.app), [pdf.js](https://mozilla.github.io/pdf.js/), [pdf-lib](https://github.com/cantoo-scribe/pdf-lib), [lopdf](https://github.com/J-F-Liu/lopdf), [tesseract.js](https://github.com/naptha/tesseract.js), [docx](https://github.com/dolanmiu/docx) and [fflate](https://github.com/101arrowz/fflate).
 
 ## More tools
 
