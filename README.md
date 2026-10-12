@@ -4,7 +4,7 @@
 
 <p align="center">A free, offline PDF tool for Windows, macOS and Linux.<br>No account, no uploads, no tracking: your PDFs never leave your computer.</p>
 
-> **Status: in development.** No release yet. The first version (0.1.0) is being built.
+**Download:** [latest release](https://github.com/imjagdeep/DeskFolio/releases/latest) for Windows, macOS (Apple Silicon and Intel, signed and notarized) and Linux.
 
 ## What it does
 
