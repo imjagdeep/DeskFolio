@@ -48,3 +48,10 @@ jobs:
           cargo fmt --all --check
           cargo clippy --all-targets -- -D warnings
           cargo test --workspace
+
+      - name: Office to PDF with LibreOffice (Linux only)
+        if: runner.os == 'Linux'
+        working-directory: src-tauri
+        run: |
+          sudo apt-get install -y --no-install-recommends libreoffice-writer-nogui
+          cargo test office -- --ignored

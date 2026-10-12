@@ -12,7 +12,7 @@
 use image::{
     codecs::jpeg::JpegEncoder, imageops::FilterType, DynamicImage, ImageBuffer, Luma, Rgb,
 };
-use lopdf::{Document, Object, Stream};
+use lopdf::{Document, LoadOptions, Object, Stream};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -50,16 +50,22 @@ pub struct Outcome {
 /// Images over this many pixels are skipped (decompression-bomb guard).
 const MAX_PIXELS: u64 = 80_000_000;
 
+/// Largest decompressed stream accepted (an 80-megapixel RGB image is 240 MB).
+const MAX_STREAM_BYTES: usize = 300 * 1024 * 1024;
+
 pub fn compress(
     input: &[u8],
     preset: Preset,
     password: Option<&str>,
 ) -> Result<(Vec<u8>, Outcome), String> {
-    let mut doc = match password {
-        Some(pw) if !pw.is_empty() => Document::load_mem_with_password(input, pw),
-        _ => Document::load_mem(input),
-    }
-    .map_err(|e| format!("can't read this PDF: {e}"))?;
+    let options = LoadOptions {
+        password: password.filter(|p| !p.is_empty()).map(str::to_string),
+        // Per-stream cap, so a hostile PDF can't inflate a stream to gigabytes.
+        max_decompressed_size: Some(MAX_STREAM_BYTES),
+        ..LoadOptions::default()
+    };
+    let mut doc = Document::load_mem_with_options(input, options)
+        .map_err(|e| format!("can't read this PDF: {e}"))?;
     if doc.is_encrypted() {
         return Err("This PDF is password-protected; open it with its password first.".into());
     }

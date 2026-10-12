@@ -360,4 +360,22 @@ mod tests {
         assert!(err.contains("stopped"));
         assert!(start.elapsed() < Duration::from_secs(10));
     }
+
+    /// Real conversion; needs LibreOffice, so CI runs it on Linux with
+    /// `cargo test -- --ignored` after installing LibreOffice Writer.
+    #[test]
+    #[ignore]
+    fn converts_a_text_file_with_libreoffice() {
+        let dir = std::env::temp_dir().join(format!(
+            "deskfolio-office-test-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let input = dir.join("Hello world.txt");
+        std::fs::write(&input, "Hello from DeskFolio.\nSecond line.\n").unwrap();
+        let pdf = convert(&input).expect("conversion");
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(pdf.starts_with(b"%PDF-"), "not a PDF");
+        assert!(pdf.len() > 500);
+    }
 }
