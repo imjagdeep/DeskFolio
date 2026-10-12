@@ -168,6 +168,12 @@ switch ($env:DF_KIND) {
 }
 "#;
 
+/// The path with forward slashes turned into backslashes.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn windows_path(p: &Path) -> String {
+    p.to_string_lossy().replace('/', "\\")
+}
+
 #[cfg(windows)]
 fn with_office(input: &Path, out: &Path, kind: Kind) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
@@ -185,8 +191,9 @@ fn with_office(input: &Path, out: &Path, kind: Kind) -> Result<(), String> {
             "-Command",
             OFFICE_PS,
         ])
-        .env("DF_IN", input)
-        .env("DF_OUT", out)
+        // Word refuses "C:/x/y.docx": give Office plain backslash paths.
+        .env("DF_IN", windows_path(input))
+        .env("DF_OUT", windows_path(out))
         .env("DF_KIND", k)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -319,6 +326,15 @@ mod tests {
         assert_eq!(kind_of(Path::new("deck.pptx")), Some(Kind::PowerPoint));
         assert_eq!(kind_of(Path::new("photo.jpg")), None);
         assert_eq!(kind_of(Path::new("noext")), None);
+    }
+
+    #[test]
+    fn office_gets_backslash_paths() {
+        assert_eq!(
+            windows_path(Path::new("C:/Users/me/My Report.docx")),
+            r"C:\Users\me\My Report.docx"
+        );
+        assert_eq!(windows_path(Path::new(r"C:\a\b.xlsx")), r"C:\a\b.xlsx");
     }
 
     #[test]
