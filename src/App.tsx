@@ -1,12 +1,15 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { useEffect, useRef, useState } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAppMenus } from "./appMenu";
+import logo from "./assets/logo.png";
 import { PasswordDialog, Toasts } from "./components/Common";
-import { Sidebar, type Page } from "./components/Sidebar";
+import { PAGES, Sidebar, type Page } from "./components/Sidebar";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { api } from "./lib/api";
-import { currentDoc, openDialog, openPath, saveAs, undo } from "./lib/doc";
-import { refreshAppInfo, toast, useAutoUpdate, useTheme } from "./lib/store";
+import { openPath, useDoc } from "./lib/doc";
+import { refreshAppInfo, toast, toastError, useAppInfo, useAutoUpdate, useTheme } from "./lib/store";
 import { checkAndDownload, dailyCheckDue } from "./lib/updates";
 import { Compress } from "./pages/Compress";
 import { Convert } from "./pages/Convert";
@@ -18,9 +21,16 @@ import { SettingsPage } from "./pages/Settings";
 import { Sign } from "./pages/Sign";
 import { Split } from "./pages/Split";
 import { Viewer } from "./pages/Viewer";
+import { ShellDialogs } from "./shell/Dialogs";
+import { MenuBar } from "./shell/MenuBar";
+import { applySavedZoom } from "./shell/shell";
 
 export default function App() {
-  const [page, setPage] = useState<Page>("home");
+  const [page, setPageRaw] = useState<Page>("home");
+  const setPage = useCallback((p: Page) => setPageRaw(p), []);
+  const menus = useAppMenus(page, setPage);
+  const info = useAppInfo();
+  const doc = useDoc();
   const content = useRef<HTMLElement>(null);
   const theme = useTheme();
   const autoUpdate = useAutoUpdate();
@@ -57,24 +67,16 @@ export default function App() {
     };
   }, []);
 
-  // Keyboard: Ctrl/Cmd+O open, +S save as, +Z undo.
+  // The window title follows the open document and page, like any editor.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      const k = e.key.toLowerCase();
-      if (k === "o") {
-        e.preventDefault();
-        void openDialog().then((ok) => ok && setPage("view"));
-      } else if (k === "s" && currentDoc()) {
-        e.preventDefault();
-        void saveAs();
-      } else if (k === "z" && currentDoc() && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
-        e.preventDefault();
-        void undo();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const where = PAGES.find((p) => p.page === page)?.label ?? "";
+    const title = doc ? `${doc.dirty ? "• " : ""}${doc.name} — DeskFolio` : page === "home" ? "DeskFolio" : `${where} — DeskFolio`;
+    void getCurrentWindow().setTitle(title).catch(() => undefined);
+  }, [page, doc]);
+
+  // The zoom chosen last time (View › Zoom).
+  useEffect(() => {
+    void applySavedZoom().catch(() => undefined);
   }, []);
 
   // Automatic updates: soon after start, then daily. Same as the sister apps.
@@ -106,21 +108,40 @@ export default function App() {
   }, [page]);
 
   return (
-    <div className="app">
-      <Sidebar page={page} onNavigate={setPage} />
-      <main className={page === "view" ? "content content-viewer" : "content"} ref={content}>
-        {page === "home" && <Home onNavigate={setPage} onOpened={() => setPage("view")} />}
-        {page === "view" && <Viewer onNavigate={setPage} />}
-        {page === "organize" && <Organize />}
-        {page === "sign" && <Sign />}
-        {page === "merge" && <Merge />}
-        {page === "split" && <Split />}
-        {page === "compress" && <Compress />}
-        {page === "convert" && <Convert />}
-        {page === "ocr" && <Ocr />}
-        {page === "settings" && <SettingsPage />}
-      </main>
+    <div className="app-frame">
+      <MenuBar appName="DeskFolio" menus={menus} onError={toastError} />
+      <div className="app">
+        <Sidebar page={page} onNavigate={setPage} />
+        <main className={page === "view" ? "content content-viewer" : "content"} ref={content}>
+          {page === "home" && <Home onNavigate={setPage} onOpened={() => setPage("view")} />}
+          {page === "view" && <Viewer onNavigate={setPage} />}
+          {page === "organize" && <Organize />}
+          {page === "sign" && <Sign />}
+          {page === "merge" && <Merge />}
+          {page === "split" && <Split />}
+          {page === "compress" && <Compress />}
+          {page === "convert" && <Convert />}
+          {page === "ocr" && <Ocr />}
+          {page === "settings" && <SettingsPage />}
+        </main>
+      </div>
       <PasswordDialog />
+      <ShellDialogs
+        menus={menus}
+        onError={toastError}
+        about={{
+          name: "DeskFolio",
+          logo,
+          version: info?.version ?? "",
+          tagline: "View, organize, sign, compress, convert and OCR your PDFs, all on your own computer.",
+          links: [
+            { label: "Website", open: () => void api.openLink("site").catch(toastError) },
+            { label: "Source code", open: () => void api.openLink("repo").catch(toastError) },
+            { label: "What's new", open: () => void api.openLink("releases").catch(toastError) },
+            { label: "Report a problem", open: () => void api.openLink("issues").catch(toastError) },
+          ],
+        }}
+      />
       <UpdateBanner app="DeskFolio" />
       <Toasts />
     </div>
