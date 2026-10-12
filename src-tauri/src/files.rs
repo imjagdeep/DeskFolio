@@ -85,7 +85,9 @@ mod tests {
     #[test]
     fn errors_are_plain_messages() {
         let d = tempfile::tempdir().unwrap();
-        assert!(read(&d.path().join("missing.pdf")).unwrap_err().contains("can't open"));
+        assert!(read(&d.path().join("missing.pdf"))
+            .unwrap_err()
+            .contains("can't open"));
         assert!(read(d.path()).unwrap_err().contains("not a file"));
         assert!(write_atomic(&d.path().join("nope").join("x.pdf"), b"x")
             .unwrap_err()

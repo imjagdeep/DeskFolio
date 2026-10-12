@@ -38,27 +38,34 @@ pub struct Converters {
 }
 
 pub fn available() -> Converters {
-    Converters { office: office_apps(), libreoffice: find_soffice().map(|p| p.display().to_string()) }
+    Converters {
+        office: office_apps(),
+        libreoffice: find_soffice().map(|p| p.display().to_string()),
+    }
 }
 
 #[cfg(windows)]
 fn office_apps() -> Vec<String> {
     // Registered COM servers: HKCR\Word.Application\CLSID etc.
     use std::os::windows::process::CommandExt;
-    [("word", "Word.Application"), ("excel", "Excel.Application"), ("powerpoint", "PowerPoint.Application")]
-        .iter()
-        .filter(|(_, prog)| {
-            Command::new("reg")
-                .args(["query", &format!("HKCR\\{prog}\\CLSID")])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .creation_flags(CREATE_NO_WINDOW)
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false)
-        })
-        .map(|(name, _)| (*name).to_string())
-        .collect()
+    [
+        ("word", "Word.Application"),
+        ("excel", "Excel.Application"),
+        ("powerpoint", "PowerPoint.Application"),
+    ]
+    .iter()
+    .filter(|(_, prog)| {
+        Command::new("reg")
+            .args(["query", &format!("HKCR\\{prog}\\CLSID")])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .creation_flags(CREATE_NO_WINDOW)
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    })
+    .map(|(name, _)| (*name).to_string())
+    .collect()
 }
 
 #[cfg(not(windows))]
@@ -74,13 +81,24 @@ fn find_soffice() -> Option<PathBuf> {
     if cfg!(windows) {
         for var in ["ProgramFiles", "ProgramFiles(x86)"] {
             if let Some(dir) = std::env::var_os(var) {
-                candidates.push(PathBuf::from(dir).join("LibreOffice").join("program").join("soffice.exe"));
+                candidates.push(
+                    PathBuf::from(dir)
+                        .join("LibreOffice")
+                        .join("program")
+                        .join("soffice.exe"),
+                );
             }
         }
     } else if cfg!(target_os = "macos") {
-        candidates.push(PathBuf::from("/Applications/LibreOffice.app/Contents/MacOS/soffice"));
+        candidates.push(PathBuf::from(
+            "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+        ));
     }
-    let names: &[&str] = if cfg!(windows) { &["soffice.exe"] } else { &["soffice", "libreoffice"] };
+    let names: &[&str] = if cfg!(windows) {
+        &["soffice.exe"]
+    } else {
+        &["soffice", "libreoffice"]
+    };
     if let Some(path) = std::env::var_os("PATH") {
         for dir in std::env::split_paths(&path) {
             for n in names {
@@ -92,7 +110,10 @@ fn find_soffice() -> Option<PathBuf> {
 }
 
 /// Wait for a child process, killing it after `limit`.
-fn wait_limited(mut child: std::process::Child, limit: Duration) -> Result<std::process::Output, String> {
+fn wait_limited(
+    mut child: std::process::Child,
+    limit: Duration,
+) -> Result<std::process::Output, String> {
     let start = Instant::now();
     loop {
         match child.try_wait() {
@@ -100,7 +121,10 @@ fn wait_limited(mut child: std::process::Child, limit: Duration) -> Result<std::
             Ok(None) if start.elapsed() > limit => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err(format!("the converter took longer than {} seconds and was stopped", limit.as_secs()));
+                return Err(format!(
+                    "the converter took longer than {} seconds and was stopped",
+                    limit.as_secs()
+                ));
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(200)),
             Err(e) => return Err(e.to_string()),
@@ -153,7 +177,14 @@ fn with_office(input: &Path, out: &Path, kind: Kind) -> Result<(), String> {
         Kind::PowerPoint => "powerpoint",
     };
     let child = Command::new("powershell.exe")
-        .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", OFFICE_PS])
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            OFFICE_PS,
+        ])
         .env("DF_IN", input)
         .env("DF_OUT", out)
         .env("DF_KIND", k)
@@ -168,8 +199,14 @@ fn with_office(input: &Path, out: &Path, kind: Kind) -> Result<(), String> {
         Ok(())
     } else {
         let err = String::from_utf8_lossy(&o.stderr);
-        let first = err.lines().find(|l| !l.trim().is_empty()).unwrap_or("no details");
-        Err(format!("Microsoft Office couldn't convert it ({})", first.trim()))
+        let first = err
+            .lines()
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or("no details");
+        Err(format!(
+            "Microsoft Office couldn't convert it ({})",
+            first.trim()
+        ))
     }
 }
 
@@ -177,10 +214,23 @@ fn with_libreoffice(soffice: &Path, input: &Path, work: &Path) -> Result<PathBuf
     // Own profile folder, so a LibreOffice window the user has open doesn't
     // block the conversion.
     let profile = work.join("lo-profile");
-    let profile_url = format!("file:///{}", profile.display().to_string().replace('\\', "/").trim_start_matches('/'));
+    let profile_url = format!(
+        "file:///{}",
+        profile
+            .display()
+            .to_string()
+            .replace('\\', "/")
+            .trim_start_matches('/')
+    );
     let mut cmd = Command::new(soffice);
     cmd.arg(format!("-env:UserInstallation={profile_url}"))
-        .args(["--headless", "--norestore", "--convert-to", "pdf", "--outdir"])
+        .args([
+            "--headless",
+            "--norestore",
+            "--convert-to",
+            "pdf",
+            "--outdir",
+        ])
         .arg(work)
         .arg(input)
         .stdin(Stdio::null())
@@ -191,7 +241,9 @@ fn with_libreoffice(soffice: &Path, input: &Path, work: &Path) -> Result<PathBuf
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
-    let child = cmd.spawn().map_err(|e| format!("can't start LibreOffice: {e}"))?;
+    let child = cmd
+        .spawn()
+        .map_err(|e| format!("can't start LibreOffice: {e}"))?;
     let o = wait_limited(child, LIMIT)?;
     let stem = input.file_stem().ok_or("the file has no name")?;
     let out = work.join(stem).with_extension("pdf");
@@ -199,7 +251,10 @@ fn with_libreoffice(soffice: &Path, input: &Path, work: &Path) -> Result<PathBuf
         Ok(out)
     } else {
         let err = String::from_utf8_lossy(&o.stderr);
-        Err(format!("LibreOffice couldn't convert it ({})", err.trim().lines().next().unwrap_or("no details")))
+        Err(format!(
+            "LibreOffice couldn't convert it ({})",
+            err.trim().lines().next().unwrap_or("no details")
+        ))
     }
 }
 
@@ -207,7 +262,8 @@ static COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// Convert an Office file to PDF and return the PDF bytes.
 pub fn convert(input: &Path) -> Result<Vec<u8>, String> {
-    let kind = kind_of(input).ok_or("DeskFolio can convert Word, Excel, PowerPoint and OpenDocument files.")?;
+    let kind = kind_of(input)
+        .ok_or("DeskFolio can convert Word, Excel, PowerPoint and OpenDocument files.")?;
     if !input.is_file() {
         return Err(format!("{} wasn't found.", input.display()));
     }
@@ -267,8 +323,12 @@ mod tests {
 
     #[test]
     fn refuses_other_files_and_missing_files() {
-        assert!(convert(Path::new("x.jpg")).unwrap_err().contains("Word, Excel"));
-        assert!(convert(Path::new("definitely-missing-file.docx")).unwrap_err().contains("wasn't found"));
+        assert!(convert(Path::new("x.jpg"))
+            .unwrap_err()
+            .contains("Word, Excel"));
+        assert!(convert(Path::new("definitely-missing-file.docx"))
+            .unwrap_err()
+            .contains("wasn't found"));
     }
 
     #[test]
@@ -283,9 +343,17 @@ mod tests {
     #[test]
     fn slow_converters_are_stopped() {
         let cmd = if cfg!(windows) {
-            Command::new("powershell.exe").args(["-NoProfile", "-Command", "Start-Sleep 30"]).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()
+            Command::new("powershell.exe")
+                .args(["-NoProfile", "-Command", "Start-Sleep 30"])
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
         } else {
-            Command::new("sleep").arg("30").stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()
+            Command::new("sleep")
+                .arg("30")
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
         };
         let start = Instant::now();
         let err = wait_limited(cmd.unwrap(), Duration::from_secs(1)).unwrap_err();

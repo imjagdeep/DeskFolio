@@ -9,7 +9,9 @@
 //! alone. Every image's size is checked before it is decoded, so a hostile
 //! PDF can't make this allocate gigabytes.
 
-use image::{codecs::jpeg::JpegEncoder, imageops::FilterType, DynamicImage, ImageBuffer, Luma, Rgb};
+use image::{
+    codecs::jpeg::JpegEncoder, imageops::FilterType, DynamicImage, ImageBuffer, Luma, Rgb,
+};
 use lopdf::{Document, Object, Stream};
 use serde::{Deserialize, Serialize};
 
@@ -48,7 +50,11 @@ pub struct Outcome {
 /// Images over this many pixels are skipped (decompression-bomb guard).
 const MAX_PIXELS: u64 = 80_000_000;
 
-pub fn compress(input: &[u8], preset: Preset, password: Option<&str>) -> Result<(Vec<u8>, Outcome), String> {
+pub fn compress(
+    input: &[u8],
+    preset: Preset,
+    password: Option<&str>,
+) -> Result<(Vec<u8>, Outcome), String> {
     let mut doc = match password {
         Some(pw) if !pw.is_empty() => Document::load_mem_with_password(input, pw),
         _ => Document::load_mem(input),
@@ -81,17 +87,33 @@ pub fn compress(input: &[u8], preset: Preset, password: Option<&str>) -> Result<
     doc.prune_objects();
     doc.compress();
     let mut out = Vec::with_capacity(input.len() / 2);
-    doc.save_modern(&mut out).map_err(|e| format!("can't write the smaller PDF: {e}"))?;
+    doc.save_modern(&mut out)
+        .map_err(|e| format!("can't write the smaller PDF: {e}"))?;
 
     let before = input.len() as u64;
     if out.len() as u64 >= before {
         return Ok((
             input.to_vec(),
-            Outcome { before, after: before, images_seen: seen, images_recompressed: done, kept_original: true },
+            Outcome {
+                before,
+                after: before,
+                images_seen: seen,
+                images_recompressed: done,
+                kept_original: true,
+            },
         ));
     }
     let after = out.len() as u64;
-    Ok((out, Outcome { before, after, images_seen: seen, images_recompressed: done, kept_original: false }))
+    Ok((
+        out,
+        Outcome {
+            before,
+            after,
+            images_seen: seen,
+            images_recompressed: done,
+            kept_original: false,
+        },
+    ))
 }
 
 fn name<'a>(s: &'a Stream, key: &[u8]) -> Option<&'a [u8]> {
@@ -127,14 +149,23 @@ fn recompress(s: &mut Stream, max_side: u32, quality: u8) -> Result<bool, String
         Some(b"DeviceGray") => true,
         _ => return Ok(false), // CMYK, Indexed, ICCBased, arrays: leave alone
     };
-    let filters: Vec<Vec<u8>> = s.filters().map(|f| f.iter().map(|x| x.to_vec()).collect()).unwrap_or_default();
-    let img = match filters.iter().map(Vec::as_slice).collect::<Vec<_>>().as_slice() {
+    let filters: Vec<Vec<u8>> = s
+        .filters()
+        .map(|f| f.iter().map(|x| x.to_vec()).collect())
+        .unwrap_or_default();
+    let img = match filters
+        .iter()
+        .map(Vec::as_slice)
+        .collect::<Vec<_>>()
+        .as_slice()
+    {
         [b"DCTDecode"] => {
             // Small JPEGs are already as good as they get.
             if s.content.len() < 60_000 {
                 return Ok(false);
             }
-            image::load_from_memory_with_format(&s.content, image::ImageFormat::Jpeg).map_err(|e| e.to_string())?
+            image::load_from_memory_with_format(&s.content, image::ImageFormat::Jpeg)
+                .map_err(|e| e.to_string())?
         }
         [b"FlateDecode"] | [] => {
             if int(s, b"BitsPerComponent") != Some(8) {
@@ -156,11 +187,13 @@ fn recompress(s: &mut Stream, max_side: u32, quality: u8) -> Result<bool, String
             }
             if gray {
                 DynamicImage::ImageLuma8(
-                    ImageBuffer::<Luma<u8>, _>::from_raw(w, h, raw[..(w * h) as usize].to_vec()).ok_or("bad grey image")?,
+                    ImageBuffer::<Luma<u8>, _>::from_raw(w, h, raw[..(w * h) as usize].to_vec())
+                        .ok_or("bad grey image")?,
                 )
             } else {
                 DynamicImage::ImageRgb8(
-                    ImageBuffer::<Rgb<u8>, _>::from_raw(w, h, raw[..(w * h * 3) as usize].to_vec()).ok_or("bad RGB image")?,
+                    ImageBuffer::<Rgb<u8>, _>::from_raw(w, h, raw[..(w * h * 3) as usize].to_vec())
+                        .ok_or("bad RGB image")?,
                 )
             }
         }
@@ -197,7 +230,11 @@ fn recompress(s: &mut Stream, max_side: u32, quality: u8) -> Result<bool, String
     s.dict.set("BitsPerComponent", Object::Integer(8));
     s.dict.set(
         "ColorSpace",
-        Object::Name(if is_gray { b"DeviceGray".to_vec() } else { b"DeviceRGB".to_vec() }),
+        Object::Name(if is_gray {
+            b"DeviceGray".to_vec()
+        } else {
+            b"DeviceRGB".to_vec()
+        }),
     );
     s.set_content(jpeg);
     // Already compressed as JPEG; don't wrap it in Flate as well.
@@ -232,7 +269,10 @@ mod tests {
         );
         img.compress().unwrap();
         let img_id = doc.add_object(img);
-        let content = Stream::new(dictionary! {}, b"q 500 0 0 400 50 200 cm /Im0 Do Q".to_vec());
+        let content = Stream::new(
+            dictionary! {},
+            b"q 500 0 0 400 50 200 cm /Im0 Do Q".to_vec(),
+        );
         let content_id = doc.add_object(content);
         let page_id = doc.add_object(dictionary! {
             "Type" => "Page", "Parent" => pages_id, "MediaBox" => vec![0.into(), 0.into(), 595.into(), 842.into()],
@@ -241,7 +281,9 @@ mod tests {
         });
         doc.objects.insert(
             pages_id,
-            Object::Dictionary(dictionary! { "Type" => "Pages", "Kids" => vec![page_id.into()], "Count" => 1 }),
+            Object::Dictionary(
+                dictionary! { "Type" => "Pages", "Kids" => vec![page_id.into()], "Count" => 1 },
+            ),
         );
         let catalog = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
         doc.trailer.set("Root", catalog);
@@ -293,6 +335,8 @@ mod tests {
 
     #[test]
     fn not_a_pdf_is_a_plain_error() {
-        assert!(compress(b"hello", Preset::Balanced, None).unwrap_err().contains("can't read"));
+        assert!(compress(b"hello", Preset::Balanced, None)
+            .unwrap_err()
+            .contains("can't read"));
     }
 }

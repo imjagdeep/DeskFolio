@@ -87,7 +87,11 @@ fn percent_decode(s: &str) -> String {
 /// when compressing didn't help).
 #[tauri::command]
 async fn compress_pdf(request: Request<'_>) -> CmdResult<Response> {
-    let preset = match request.headers().get("x-preset").and_then(|v| v.to_str().ok()) {
+    let preset = match request
+        .headers()
+        .get("x-preset")
+        .and_then(|v| v.to_str().ok())
+    {
         Some("light") => compress::Preset::Light,
         Some("strong") => compress::Preset::Strong,
         _ => compress::Preset::Balanced,
@@ -103,7 +107,8 @@ async fn compress_pdf(request: Request<'_>) -> CmdResult<Response> {
     };
     let data = data.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        compress::compress(&data, preset, password.as_deref()).map(|(bytes, _)| Response::new(bytes))
+        compress::compress(&data, preset, password.as_deref())
+            .map(|(bytes, _)| Response::new(bytes))
     })
     .await
     .map_err(|e| format!("background task failed: {e}"))?
@@ -218,7 +223,8 @@ pub fn run() {
             // macOS: files opened from Finder arrive as an event.
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             if let tauri::RunEvent::Opened { urls } = _event {
-                let paths: Vec<PathBuf> = urls.iter().filter_map(|u| u.to_file_path().ok()).collect();
+                let paths: Vec<PathBuf> =
+                    urls.iter().filter_map(|u| u.to_file_path().ok()).collect();
                 if !paths.is_empty() {
                     show_main(_app);
                     let _ = _app.emit("open-paths", paths);
@@ -233,7 +239,10 @@ mod tests {
 
     #[test]
     fn decodes_paths_from_the_header() {
-        assert_eq!(percent_decode("C%3A%5CUsers%5Cme%5Ca%20b.pdf"), r"C:\Users\me\a b.pdf");
+        assert_eq!(
+            percent_decode("C%3A%5CUsers%5Cme%5Ca%20b.pdf"),
+            r"C:\Users\me\a b.pdf"
+        );
         assert_eq!(percent_decode("%E0%A8%AA.pdf"), "ਪ.pdf");
         // A stray % is kept as is, even before a non-ASCII character.
         assert_eq!(percent_decode("100%.pdf"), "100%.pdf");
