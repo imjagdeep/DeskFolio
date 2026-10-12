@@ -236,6 +236,7 @@ export async function openDialog(): Promise<boolean> {
  * changes. The tab to its left (or Home) becomes active.
  */
 export async function closeDoc(id: number | null = tabsStore.get().active): Promise<boolean> {
+  if (id === tabsStore.get().active) await flushPending();
   const t = tabsStore.get();
   const at = t.docs.findIndex((d) => d.id === id);
   if (at < 0) return false;
@@ -253,6 +254,7 @@ export async function closeDoc(id: number | null = tabsStore.get().active): Prom
 
 /** Before the app quits: asks when any tab has unsaved changes. */
 export async function okToQuit(): Promise<boolean> {
+  await flushPending();
   const dirty = tabsStore.get().docs.filter((d) => d.dirty);
   if (!dirty.length) return true;
   const { ask } = await import("@tauri-apps/plugin-dialog");
@@ -268,11 +270,24 @@ export async function okToQuit(): Promise<boolean> {
 // ---------- editing ----------
 
 /**
+ * Marks drawn in the viewer (highlights, notes, drawings...) live in pdf.js
+ * until they are written into the file's bytes. The viewer registers how to
+ * do that here, and saving, closing and quitting call it first.
+ */
+let pendingFlush: (() => Promise<void>) | null = null;
+export function setPendingFlush(fn: (() => Promise<void>) | null) {
+  pendingFlush = fn;
+}
+export async function flushPending(): Promise<void> {
+  if (pendingFlush) await pendingFlush();
+}
+
+/**
  * Replace the active document with edited bytes (from a tool). The previous
  * version goes on its undo stack.
  */
-export async function applyEdit(bytes: Uint8Array, what: string): Promise<boolean> {
-  const d = docStore.get();
+export async function applyEdit(bytes: Uint8Array, what: string, id: number | null = tabsStore.get().active): Promise<boolean> {
+  const d = tabsStore.get().docs.find((x) => x.id === id);
   if (!d) return false;
   try {
     const pdf = await loadPdf(bytes, d.password);
@@ -326,6 +341,7 @@ export async function pickSavePath(defaultPath: string, kind = "PDF", ext = "pdf
 }
 
 export async function saveAs(): Promise<string | null> {
+  await flushPending();
   const d = docStore.get();
   if (!d) return null;
   try {
@@ -344,6 +360,7 @@ export async function saveAs(): Promise<string | null> {
 
 /** Write over the file it came from (asks first). */
 export async function saveOver(): Promise<boolean> {
+  await flushPending();
   const d = docStore.get();
   if (!d) return false;
   try {

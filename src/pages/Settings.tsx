@@ -3,12 +3,14 @@ import { DeskLabTools } from "../components/DeskLab";
 import { api } from "../lib/api";
 import { setAutoUpdate, setTheme, toastError, useAppInfo, useAutoUpdate, useTheme, type Theme } from "../lib/store";
 import { checkAndDownload, installNow, useUpdate } from "../lib/updates";
+import { setMarkup, useMarkup } from "../workspace/markup";
 
 export function SettingsPage() {
   const info = useAppInfo();
   const theme = useTheme();
   const auto = useAutoUpdate();
   const st = useUpdate();
+  const markup = useMarkup();
   const busy = st.kind === "checking" || st.kind === "downloading" || st.kind === "installing";
 
   return (
@@ -24,6 +26,15 @@ export function SettingsPage() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="card">
+        <h2>Comments</h2>
+        <label className="field">
+          <span>Your name on comments and marks</span>
+          <input value={markup.author} maxLength={80} placeholder="Leave empty to add no name" onChange={(e) => setMarkup({ author: e.target.value })} />
+        </label>
+        <p className="muted small">Shown as the author in DeskFolio's Comments list and in Acrobat. Saved on this computer only.</p>
       </div>
 
       <div className="card">

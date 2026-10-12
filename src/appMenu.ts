@@ -26,7 +26,7 @@ import { checkAndDownload } from "./lib/updates";
 import type { Entry, MenuDef } from "./shell/menu";
 import { editCommand, openShellDialog, pasteText, setZoom, textFieldFocused, toggleFullscreen, zoomStep } from "./shell/shell";
 import { focusSearch, togglePanel, usePanel } from "./workspace/panels";
-import { forgetView, rotateView, SCROLL, setDark, setScale, setScroll, setSpread, SPREAD, useView, zoom, goToPage } from "./workspace/viewer";
+import { editAction, forgetView, rotateView, SCROLL, setDark, setScale, setScroll, setSpread, SPREAD, useView, zoom, goToPage } from "./workspace/viewer";
 
 const LAB_NAMES: Record<string, string> = { deskzero: "DeskZero", deskmedic: "DeskMedic" };
 const fileName = (p: string) => p.split(/[\\/]/).pop() ?? p;
@@ -108,10 +108,11 @@ export function useAppMenus(page: Page, go: (p: Page) => void): MenuDef[] {
           id: "undo",
           label: "Undo",
           accel: "Mod+Z",
-          enabled: () => textFieldFocused() || canUndo(),
-          run: () => (textFieldFocused() ? editCommand("undo") : undo()),
+          enabled: () => textFieldFocused() || view.marks.canUndo || canUndo(),
+          // While marking up, the last mark first; then whole document changes.
+          run: () => (textFieldFocused() ? editCommand("undo") : view.marks.canUndo ? editAction("undo") : undo()),
         },
-        { id: "redo", label: "Redo", accel: "Mod+Y", native: "redo", hidden: true, run: () => editCommand("redo") },
+        { id: "redo", label: "Redo", accel: "Mod+Y", native: "redo", hidden: true, run: () => (!textFieldFocused() && view.marks.canRedo ? editAction("redo") : editCommand("redo")) },
         "-",
         { id: "cut", label: "Cut", accel: "Mod+X", native: "cut", hidden: true, run: () => editCommand("cut") },
         { id: "copy", label: "Copy", accel: "Mod+C", native: "copy", hidden: true, run: () => editCommand("copy") },

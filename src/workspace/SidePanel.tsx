@@ -2,7 +2,8 @@
 // outline) and search, switched by the icon rail on its left edge.
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowDownIcon, ArrowUpIcon, BookmarkIcon, ChevronRightIcon, CloseIcon, PagesIcon, SearchIcon, type IconType } from "../components/Icons";
+import { ArrowDownIcon, ArrowUpIcon, BookmarkIcon, ChevronRightIcon, CloseIcon, CommentsIcon, PagesIcon, SearchIcon, type IconType } from "../components/Icons";
+import { Comments } from "./Comments";
 import type { OpenDoc } from "../lib/doc";
 import { renderPage } from "../lib/pdfjs";
 import { setPanel, usePanel, type PanelId } from "./panels";
@@ -11,6 +12,7 @@ import { closeFind, find, goToDest, goToPage, useView } from "./viewer";
 const RAIL: { id: PanelId; label: string; Icon: IconType }[] = [
   { id: "pages", label: "Pages", Icon: PagesIcon },
   { id: "outline", label: "Bookmarks", Icon: BookmarkIcon },
+  { id: "comments", label: "Comments", Icon: CommentsIcon },
   { id: "search", label: "Search", Icon: SearchIcon },
 ];
 
@@ -42,6 +44,7 @@ export function SidePanel({ doc }: { doc: OpenDoc }) {
           </header>
           {panel === "pages" && <Thumbs doc={doc} />}
           {panel === "outline" && <Outline doc={doc} />}
+          {panel === "comments" && <Comments doc={doc} />}
           {panel === "search" && <Search doc={doc} />}
         </section>
       )}
