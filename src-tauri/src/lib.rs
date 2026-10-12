@@ -1,6 +1,7 @@
 //! DeskFolio desktop shell: one window, file I/O for the web side (where the
 //! PDF work happens), updates.
 
+mod compress;
 mod files;
 
 use std::path::PathBuf;
@@ -78,6 +79,33 @@ fn percent_decode(s: &str) -> String {
         i += 1;
     }
     String::from_utf8_lossy(&out).into_owned()
+}
+
+/// Compress PDF bytes (raw request body). Preset and password come in
+/// headers; the smaller PDF comes back as raw bytes (the original bytes
+/// when compressing didn't help).
+#[tauri::command]
+async fn compress_pdf(request: Request<'_>) -> CmdResult<Response> {
+    let preset = match request.headers().get("x-preset").and_then(|v| v.to_str().ok()) {
+        Some("light") => compress::Preset::Light,
+        Some("strong") => compress::Preset::Strong,
+        _ => compress::Preset::Balanced,
+    };
+    let password = request
+        .headers()
+        .get("x-password")
+        .and_then(|v| v.to_str().ok())
+        .map(percent_decode)
+        .filter(|p| !p.is_empty());
+    let InvokeBody::Raw(data) = request.body() else {
+        return Err("expected raw PDF bytes".into());
+    };
+    let data = data.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        compress::compress(&data, preset, password.as_deref()).map(|(bytes, _)| Response::new(bytes))
+    })
+    .await
+    .map_err(|e| format!("background task failed: {e}"))?
 }
 
 #[tauri::command]
@@ -159,6 +187,7 @@ pub fn run() {
             app_info,
             read_file,
             write_file,
+            compress_pdf,
             take_startup_paths,
             reveal_file,
             open_link,

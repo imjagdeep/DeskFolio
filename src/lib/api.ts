@@ -14,6 +14,13 @@ export const api = {
   /** Save bytes to `path` (temp file, then rename). */
   writeFile: (path: string, bytes: Uint8Array) =>
     invoke<void>("write_file", bytes, { headers: { "x-path": encodeURIComponent(path) } }),
+  /** Smaller PDF bytes (the same bytes back when nothing could be saved). */
+  compressPdf: async (bytes: Uint8Array, preset: "light" | "balanced" | "strong", password?: string) =>
+    new Uint8Array(
+      await invoke<ArrayBuffer>("compress_pdf", bytes, {
+        headers: { "x-preset": preset, "x-password": encodeURIComponent(password ?? "") },
+      }),
+    ),
   takeStartupPaths: () => invoke<string[]>("take_startup_paths"),
   revealFile: (path: string) => invoke<void>("reveal_file", { path }),
   openLink: (id: "releases" | "developer" | "deskzero" | "deskmedic") => invoke<void>("open_link", { id }),

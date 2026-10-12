@@ -92,3 +92,53 @@ button.dropzone:hover { border-color: var(--text-3); filter: none; }
 .range-field input { width: 110px; height: 24px; }
 .range-field input[aria-invalid="true"] { box-shadow: 0 0 0 1px var(--red); }
 .action-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 0.5px solid var(--sep); }
+
+/* ---------- compress ---------- */
+.preset-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.preset { height: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px; text-align: left; white-space: normal; border-radius: var(--radius); background: var(--group); box-shadow: 0 0 0 0.5px var(--group-border); }
+.preset:hover:not(:disabled) { filter: none; background: var(--window); }
+.preset.active { box-shadow: 0 0 0 2px var(--accent); background: var(--window); }
+.result.good { box-shadow: 0 0 0 1px color-mix(in srgb, var(--green) 45%, transparent); }
+.result-big { font-size: 18px; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+
+/* ---------- fill & sign ---------- */
+.sign-toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+.sig-strip { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sig-chip { position: relative; display: inline-flex; }
+.sig-chip > button:first-child { height: 34px; padding: 2px 8px; background: #fff; }
+.sig-chip.active > button:first-child { box-shadow: 0 0 0 2px var(--accent); }
+.sig-chip img { height: 28px; max-width: 120px; object-fit: contain; }
+.sig-del { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; padding: 0; border-radius: 50%; display: none; align-items: center; justify-content: center; }
+.sig-chip:hover .sig-del { display: inline-flex; }
+.check-row.inline { margin: 0; align-items: center; }
+.sign-nav { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px 0; }
+.sign-area { display: flex; justify-content: center; padding: 10px 0 40px; }
+.sign-sheet { color-scheme: light; position: relative; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 8px 24px rgba(0, 0, 0, 0.08); }
+.sign-sheet canvas { display: block; }
+.sign-sheet.placing { cursor: crosshair; }
+.sign-sheet .field-input { position: absolute; height: auto; min-height: 0; box-sizing: border-box; margin: 0; padding: 0 3px; border: none; border-radius: 2px; background: rgba(60, 110, 230, 0.12); box-shadow: inset 0 0 0 1px rgba(60, 110, 230, 0.45); color: #111; font-family: Helvetica, Arial, sans-serif; resize: none; }
+.sign-sheet .field-input:focus { background: rgba(60, 110, 230, 0.08); box-shadow: inset 0 0 0 1.5px rgba(60, 110, 230, 0.9); outline: none; }
+.sign-sheet .field-input:disabled { background: rgba(0, 0, 0, 0.04); box-shadow: none; }
+.sign-sheet .field-check, .sign-sheet .field-radio { background: transparent; box-shadow: none; appearance: auto; width: auto; height: auto; }
+.placed { position: absolute; box-sizing: border-box; cursor: move; touch-action: none; }
+.placed:hover, .placed:focus-within { box-shadow: 0 0 0 1px rgba(60, 110, 230, 0.7); }
+.placed textarea { width: 100%; height: 100%; box-sizing: border-box; padding: 0; margin: 0; border: none; background: transparent; resize: none; color: #141418; font-family: Helvetica, Arial, sans-serif; line-height: 1.18; overflow: hidden; cursor: text; box-shadow: none; }
+.placed textarea:focus { outline: none; box-shadow: none; }
+.placed img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+.placed .mark { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; color: #141418; font-weight: 700; line-height: 1; font-size: 100%; }
+.placed-check .mark, .placed-cross .mark { font-size: inherit; }
+.placed-del { position: absolute; top: -9px; right: -9px; width: 18px; height: 18px; padding: 0; border-radius: 50%; display: none; align-items: center; justify-content: center; }
+.placed:hover .placed-del { display: inline-flex; }
+.placed-resize { position: absolute; right: -4px; bottom: -4px; width: 10px; height: 10px; border-radius: 2px; background: rgba(60, 110, 230, 0.9); cursor: nwse-resize; display: none; }
+.placed:hover .placed-resize { display: block; }
+.sig-modal { width: min(640px, 92vw); }
+.sig-pad { width: 100%; aspect-ratio: 3 / 1; margin-top: 10px; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1px var(--sep); touch-action: none; }
+.sig-pad.drawable { cursor: crosshair; }
+.sig-type { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.small-seg button { font-size: 15px; }
+.sig-pick { width: 100%; margin-top: 10px; }
+.segmented { display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--group); box-shadow: 0 0 0 0.5px var(--group-border); }
+.segmented button { height: 28px; padding: 0 12px; background: transparent; box-shadow: none; }
+.segmented button.active { background: var(--window); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18); }
+.sign-sheet .field-check { appearance: auto; accent-color: #2f6fdb; }
+.sign-sheet .field-check::after { content: none; }
