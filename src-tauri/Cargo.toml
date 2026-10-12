@@ -1,6 +1,6 @@
 [package]
 name = "deskfolio"
-version = "0.1.0"
+version = "0.1.1"
 description = "Offline PDF toolkit: view, organize, sign, compress, convert, OCR"
 license = "MIT"
 edition = "2021"
