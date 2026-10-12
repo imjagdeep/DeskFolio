@@ -1,0 +1,29 @@
+# --- Rust / Tauri ---
+src-tauri/target/
+**/*.rs.bk
+*.pdb
+
+# --- Node / front end ---
+node_modules/
+dist/
+*.local
+
+# --- Runtime data (never commit local state) ---
+*.jsonl
+settings.json
+rules.json
+
+# --- OS junk ---
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# --- Editors ---
+.vscode/
+.idea/
+
+# --- Tauri generated ---
+src-tauri/gen/
+
+# --- pdf.js assets copied at build time (vite.config.ts) ---
+public/pdfjs/

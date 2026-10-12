@@ -1,0 +1,92 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "DeskFolio",
+  "version": "0.1.0",
+  "identifier": "app.deskfolio.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "DeskFolio",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 880,
+        "minHeight": 580,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost blob: data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis",
+      "app",
+      "dmg",
+      "appimage",
+      "deb"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "Jagdeep Sandhu",
+    "copyright": "Copyright (c) 2026 Jagdeep Sandhu. MIT License.",
+    "category": "Productivity",
+    "shortDescription": "Offline PDF toolkit",
+    "longDescription": "DeskFolio views, organizes, merges, splits, compresses, signs, fills, converts and OCRs PDFs on your computer. Offline, private, no account.",
+    "fileAssociations": [
+      {
+        "ext": [
+          "pdf"
+        ],
+        "name": "PDF document",
+        "description": "PDF document",
+        "role": "Viewer",
+        "mimeType": "application/pdf"
+      }
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "installerHooks": "./windows/hooks.nsh",
+        "installerIcon": "icons/icon.ico"
+      },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "deb": {
+        "section": "utils"
+      }
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0QjczMTIxQjFFODI4MUIKUldRYktPaXhJVEczcEgzMlF1QU1kOGNyS1F0Uzh2dW1pUFlTai9YWDBlRmJoT2FhekVoVjdaVEkK",
+      "endpoints": [
+        "https://github.com/imjagdeep/DeskFolio/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}
