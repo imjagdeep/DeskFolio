@@ -152,6 +152,9 @@ fn reveal_file(app: AppHandle, path: PathBuf) -> CmdResult<()> {
 fn open_link(app: AppHandle, id: String) -> CmdResult<()> {
     let url = match id.as_str() {
         "releases" => "https://github.com/imjagdeep/DeskFolio/releases/latest",
+        "repo" => "https://github.com/imjagdeep/DeskFolio",
+        "issues" => "https://github.com/imjagdeep/DeskFolio/issues",
+        "site" => "https://jaggi.cc/tools/#deskfolio",
         "developer" => "https://github.com/imjagdeep",
         "deskzero" => "https://github.com/imjagdeep/DeskZero/releases/latest",
         "deskmedic" => "https://github.com/imjagdeep/DeskMedic/releases/latest",
@@ -214,6 +217,15 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // Reopen where it was left (size, position, maximized), never hidden.
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::VISIBLE,
+                )
+                .build(),
+        )
         .setup(|app| {
             let args: Vec<String> = std::env::args().collect();
             app.manage(Startup(Mutex::new(files::paths_from_args(&args))));

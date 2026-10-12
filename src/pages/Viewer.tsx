@@ -81,6 +81,25 @@ export function Viewer({ onNavigate }: { onNavigate: (p: Page) => void }) {
     setZoom(next ?? (dir > 0 ? ZOOMS[ZOOMS.length - 1] : ZOOMS[0]));
   };
 
+  // View menu: zoom and Find act on the open PDF while this page shows.
+  const findInput = useRef<HTMLInputElement>(null);
+  const zoomRef = useRef(zoomStep);
+  zoomRef.current = zoomStep;
+  useEffect(() => {
+    const onCmd = (e: Event) => {
+      const what = e instanceof CustomEvent ? e.detail : null;
+      if (what === "zoom-in") zoomRef.current(1);
+      else if (what === "zoom-out") zoomRef.current(-1);
+      else if (what === "fit") setZoom("fit");
+      else if (what === "find") {
+        findInput.current?.focus();
+        findInput.current?.select();
+      }
+    };
+    window.addEventListener("viewer-command", onCmd);
+    return () => window.removeEventListener("viewer-command", onCmd);
+  }, []);
+
   // Text search over every page (text is cached per document version).
   const textCache = useRef<Map<number, string>>(new Map());
   useEffect(() => {
@@ -164,7 +183,7 @@ export function Viewer({ onNavigate }: { onNavigate: (p: Page) => void }) {
             }}
           >
             <SearchIcon size={14} />
-            <input value={query} placeholder="Find text" aria-label="Find text" onChange={(e) => setQuery(e.target.value)} />
+            <input ref={findInput} value={query} placeholder="Find text (Ctrl+F)" aria-label="Find text" onChange={(e) => setQuery(e.target.value)} />
           </form>
         </div>
         <div className="viewer-actions">

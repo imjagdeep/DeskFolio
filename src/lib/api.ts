@@ -33,7 +33,7 @@ export const api = {
   officeToPdf: async (path: string) => new Uint8Array(await invoke<ArrayBuffer>("office_to_pdf", { path })),
   takeStartupPaths: () => invoke<string[]>("take_startup_paths"),
   revealFile: (path: string) => invoke<void>("reveal_file", { path }),
-  openLink: (id: "releases" | "developer" | LabToolId) => invoke<void>("open_link", { id }),
+  openLink: (id: "site" | "repo" | "issues" | "releases" | "developer" | LabToolId) => invoke<void>("open_link", { id }),
   /** The other DeskLab tools and whether each is installed here. */
   desklabTools: () => invoke<LabTool[]>("desklab_tools"),
   /** Start an installed DeskLab tool, optionally with a file for it to open. */
