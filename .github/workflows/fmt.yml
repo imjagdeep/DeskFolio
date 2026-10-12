@@ -1,0 +1,33 @@
+name: Format
+
+# Run by hand (`gh workflow run fmt.yml --ref <branch>`): formats the Rust
+# code with rustfmt and commits the result to the same branch. Useful when
+# rustfmt can't run locally.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Format and commit
+        working-directory: src-tauri
+        run: |
+          cargo fmt --all
+          if git diff --quiet; then
+            echo "Already formatted."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "cargo fmt"
+          git push

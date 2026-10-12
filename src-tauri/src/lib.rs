@@ -3,6 +3,7 @@
 
 mod compress;
 mod files;
+mod office;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -117,6 +118,22 @@ fn take_startup_paths(startup: State<'_, Startup>) -> Vec<PathBuf> {
         .unwrap_or_default()
 }
 
+/// Which Office converters this computer has (Office apps, LibreOffice).
+#[tauri::command]
+async fn office_converters() -> CmdResult<office::Converters> {
+    tauri::async_runtime::spawn_blocking(office::available)
+        .await
+        .map_err(|e| format!("background task failed: {e}"))
+}
+
+/// Convert a Word/Excel/PowerPoint file to PDF; returns the PDF bytes.
+#[tauri::command]
+async fn office_to_pdf(path: PathBuf) -> CmdResult<Response> {
+    tauri::async_runtime::spawn_blocking(move || office::convert(&path).map(Response::new))
+        .await
+        .map_err(|e| format!("background task failed: {e}"))?
+}
+
 #[tauri::command]
 fn reveal_file(app: AppHandle, path: PathBuf) -> CmdResult<()> {
     app.opener()
@@ -188,6 +205,8 @@ pub fn run() {
             read_file,
             write_file,
             compress_pdf,
+            office_converters,
+            office_to_pdf,
             take_startup_paths,
             reveal_file,
             open_link,

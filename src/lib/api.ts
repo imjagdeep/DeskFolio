@@ -21,6 +21,10 @@ export const api = {
         headers: { "x-preset": preset, "x-password": encodeURIComponent(password ?? "") },
       }),
     ),
+  /** Which Office converters this computer has. */
+  officeConverters: () => invoke<{ office: string[]; libreoffice: string | null }>("office_converters"),
+  /** PDF bytes made from a Word/Excel/PowerPoint file by Office or LibreOffice. */
+  officeToPdf: async (path: string) => new Uint8Array(await invoke<ArrayBuffer>("office_to_pdf", { path })),
   takeStartupPaths: () => invoke<string[]>("take_startup_paths"),
   revealFile: (path: string) => invoke<void>("reveal_file", { path }),
   openLink: (id: "releases" | "developer" | "deskzero" | "deskmedic") => invoke<void>("open_link", { id }),

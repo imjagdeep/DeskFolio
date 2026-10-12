@@ -25,7 +25,8 @@ export function siblingPath(path: string, suffix: string, ext?: string): string 
   const dot = name.lastIndexOf(".");
   const stem = dot > 0 ? name.slice(0, dot) : name;
   const oldExt = dot > 0 ? name.slice(dot + 1) : "";
-  const newName = `${stem} (${suffix}).${ext ?? (oldExt || "pdf")}`;
+  // No suffix: same name, new extension ("Report.pdf" → "Report.docx").
+  const newName = `${stem}${suffix ? ` (${suffix})` : ""}.${ext ?? (oldExt || "pdf")}`;
   return dir === path ? newName : `${dir}${sep}${newName}`;
 }
 
