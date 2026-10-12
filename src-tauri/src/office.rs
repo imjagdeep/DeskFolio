@@ -366,10 +366,8 @@ mod tests {
     #[test]
     #[ignore]
     fn converts_a_text_file_with_libreoffice() {
-        let dir = std::env::temp_dir().join(format!(
-            "deskfolio-office-test-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("deskfolio-office-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let input = dir.join("Hello world.txt");
         std::fs::write(&input, "Hello from DeskFolio.\nSecond line.\n").unwrap();
