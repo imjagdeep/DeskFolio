@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Also by hand: pushes made by the Format workflow don't start CI.
+  workflow_dispatch:
 
 jobs:
   check:
