@@ -1,4 +1,3 @@
-import { PageHeader } from "../components/Common";
 import {
   CompressIcon,
   ConvertIcon,
@@ -11,75 +10,84 @@ import {
   SplitIcon,
   type IconType,
 } from "../components/Icons";
-import type { Page } from "../components/Sidebar";
-import { forgetRecent, openDialog, openPath, useDoc, useRecent } from "../lib/doc";
+import type { Page } from "../workspace/pages";
+import { activate, forgetRecent, openDialog, openPath, useRecent, useTabs } from "../lib/doc";
 import { fileName, parentDir } from "../lib/format";
 
 type Tile = { page: Page; title: string; text: string; Icon: IconType; needsDoc?: boolean };
 const TILES: Tile[] = [
-  { page: "organize", title: "Organize pages", text: "Reorder, rotate, delete, insert", Icon: OrganizeIcon, needsDoc: true },
   { page: "sign", title: "Fill & Sign", text: "Fill forms, sign, add text", Icon: SignIcon, needsDoc: true },
+  { page: "organize", title: "Organize pages", text: "Reorder, rotate, delete, insert", Icon: OrganizeIcon, needsDoc: true },
   { page: "merge", title: "Merge", text: "Join PDFs into one", Icon: MergeIcon },
   { page: "split", title: "Split", text: "By ranges or every N pages", Icon: SplitIcon },
   { page: "compress", title: "Compress", text: "Make a PDF smaller", Icon: CompressIcon },
   { page: "convert", title: "Convert", text: "To and from Word, Excel, images", Icon: ConvertIcon },
-  { page: "ocr", title: "OCR", text: "Make scans searchable", Icon: OcrIcon },
+  { page: "ocr", title: "Recognise text", text: "Make scans searchable (OCR)", Icon: OcrIcon },
 ];
 
-export function Home({ onNavigate, onOpened }: { onNavigate: (p: Page) => void; onOpened: () => void }) {
-  const doc = useDoc();
+/** The Home tab: open files, start a tool, pick up where you left off. */
+export function Home({ onNavigate }: { onNavigate: (p: Page) => void; onOpened: () => void }) {
   const recent = useRecent();
+  const { docs } = useTabs();
+
+  // Tools that work on a document ask for one first, then open in its tab.
+  const startTool = async (t: Tile) => {
+    if (t.needsDoc && !(await openDialog())) return;
+    onNavigate(t.page);
+  };
 
   return (
-    <div className="page">
-      <PageHeader title="DeskFolio" subtitle="Your PDFs, on your computer. Nothing is uploaded." />
-
-      <button className="dropzone" onClick={() => void openDialog().then((ok) => ok && onOpened())}>
-        <span className="dropzone-icon">
-          <DropIcon size={26} />
-        </span>
-        <strong>Open a PDF</strong>
-        <span className="muted small">or drop one anywhere on this window · Ctrl+O</span>
-      </button>
-
-      {doc && (
-        <div className="card current-doc">
-          <FileIcon size={20} />
-          <div className="grow">
-            <div className="ellipsis">
-              <strong>{doc.name}</strong>
-              {doc.dirty && <span className="badge warn">edited</span>}
-            </div>
-            <div className="muted small">
-              {doc.pages} page{doc.pages === 1 ? "" : "s"} · open now
-            </div>
-          </div>
-          <button className="primary" onClick={() => onNavigate("view")}>
-            View
-          </button>
+    <div className="page home-page">
+      <section className="home-hero">
+        <div>
+          <h1>Your PDFs, on your computer.</h1>
+          <p className="muted">Read, sign, organize, compress and convert. Nothing is uploaded.</p>
         </div>
-      )}
+        <button className="dropzone" onClick={() => void openDialog()}>
+          <span className="dropzone-icon">
+            <DropIcon size={26} />
+          </span>
+          <strong>Open PDFs</strong>
+          <span className="muted small">or drop them anywhere on this window · Ctrl+O</span>
+        </button>
+      </section>
 
       <h3>Tools</h3>
       <div className="tool-tiles">
-        {TILES.map(({ page, title, text, Icon, needsDoc }) => (
-          <button
-            key={page}
-            className="tool-tile"
-            disabled={needsDoc && !doc}
-            title={needsDoc && !doc ? "Open a PDF first" : undefined}
-            onClick={() => onNavigate(page)}
-          >
+        {TILES.map((t) => (
+          <button key={t.page} className="tool-tile" onClick={() => void startTool(t)} title={t.needsDoc ? "Choose a PDF, then the tool opens" : undefined}>
             <span className="tool-tile-icon">
-              <Icon size={20} />
+              <t.Icon size={20} />
             </span>
             <span className="tool-tile-text">
-              <strong>{title}</strong>
-              <span className="muted small">{text}</span>
+              <strong>{t.title}</strong>
+              <span className="muted small">{t.text}</span>
             </span>
           </button>
         ))}
       </div>
+
+      {docs.length > 0 && (
+        <>
+          <h3>Open now</h3>
+          <div className="card list">
+            {docs.map((d) => (
+              <div className="list-row recent-row" key={d.id}>
+                <FileIcon size={16} />
+                <button className="recent-open" title={d.path} onClick={() => activate(d.id)}>
+                  <span className="ellipsis">
+                    {d.name}
+                    {d.dirty && <span className="badge warn">edited</span>}
+                  </span>
+                  <span className="muted small ellipsis">
+                    {d.pages} page{d.pages === 1 ? "" : "s"} · {parentDir(d.path)}
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {recent.length > 0 && (
         <>
@@ -88,7 +96,7 @@ export function Home({ onNavigate, onOpened }: { onNavigate: (p: Page) => void; 
             {recent.map((p) => (
               <div className="list-row recent-row" key={p}>
                 <FileIcon size={16} />
-                <button className="recent-open" title={p} onClick={() => void openPath(p).then((ok) => ok && onOpened())}>
+                <button className="recent-open" title={p} onClick={() => void openPath(p)}>
                   <span className="ellipsis">{fileName(p)}</span>
                   <span className="muted small ellipsis">{parentDir(p)}</span>
                 </button>

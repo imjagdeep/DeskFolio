@@ -167,7 +167,7 @@ export function Organize() {
       </PageHeader>
       <p className="muted small">
         Click to select (Ctrl to add, Shift for a range), drag to move. Changes apply straight away; Undo takes them back,
-        and nothing is saved until you choose Save in View.
+        and nothing is saved until you choose Save as… (top right).
       </p>
 
       <div className={selected.length ? "selection-bar on" : "selection-bar"}>

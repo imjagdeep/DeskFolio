@@ -191,3 +191,219 @@ export const CloseIcon = (p: IconProps) => (
     <path d="M6 6l12 12M18 6 6 18" />
   </Svg>
 );
+
+// ---------- workspace (ribbon, panels, status bar) ----------
+
+export const PagesIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="4" y="3.5" width="7" height="8" rx="1" />
+    <rect x="13" y="3.5" width="7" height="8" rx="1" />
+    <rect x="4" y="13.5" width="7" height="7" rx="1" />
+    <rect x="13" y="13.5" width="7" height="7" rx="1" />
+  </Svg>
+);
+
+export const BookmarkIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M6.5 3.5h11v17l-5.5-4-5.5 4z" />
+  </Svg>
+);
+
+export const FitWidthIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="4" y="4" width="16" height="16" rx="1.5" />
+    <path d="M7.5 12h9M9.5 9.5 7 12l2.5 2.5M14.5 9.5 17 12l-2.5 2.5" />
+  </Svg>
+);
+
+export const FitPageIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="6" y="3.5" width="12" height="17" rx="1.5" />
+    <path d="M12 7v10M9.5 9 12 6.8 14.5 9M9.5 15l2.5 2.2 2.5-2.2" />
+  </Svg>
+);
+
+export const ActualSizeIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="4" y="5" width="16" height="14" rx="1.5" />
+    <path d="M8 10v5M7 10.5l1-.8M12 11.2v.1M12 14v.1M16 10v5M15 10.5l1-.8" />
+  </Svg>
+);
+
+export const RotateLeftIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 12a8 8 0 1 0 2.3-5.6" />
+    <path d="M4 4v5h5" />
+  </Svg>
+);
+
+export const SinglePageIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="7" y="3.5" width="10" height="17" rx="1.2" />
+  </Svg>
+);
+
+export const TwoPagesIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3" y="5" width="8.5" height="14" rx="1.2" />
+    <rect x="12.5" y="5" width="8.5" height="14" rx="1.2" />
+  </Svg>
+);
+
+export const ScrollIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="7" y="2.5" width="10" height="8" rx="1" />
+    <rect x="7" y="13.5" width="10" height="8" rx="1" />
+  </Svg>
+);
+
+export const MoonIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z" />
+  </Svg>
+);
+
+export const FullScreenIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+  </Svg>
+);
+
+export const PanelLeftIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+    <path d="M9.5 4.5v15" />
+  </Svg>
+);
+
+export const ArrowUpIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m6 15 6-6 6 6" />
+  </Svg>
+);
+
+export const ArrowDownIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m6 9 6 6 6-6" />
+  </Svg>
+);
+
+export const ExtractIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M14 3.5H7v17h10V7z" />
+    <path d="M14 3.5V7h3" />
+    <path d="M12 10v6M9.5 13.5 12 16l2.5-2.5" />
+  </Svg>
+);
+
+// ---------- comment & markup ----------
+
+export const CursorIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M6 3.5 18 13l-5.5.8L15 19.5l-2.4 1-2.5-5.6L6 18.5z" />
+  </Svg>
+);
+
+export const HighlightIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m14.5 4.5 5 5-8 8H7v-4.5z" />
+    <path d="M12.5 6.5l5 5" />
+    <path d="M4 20.5h9" />
+  </Svg>
+);
+
+export const TextBoxIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" strokeDasharray="2.5 2.2" />
+    <path d="M8.5 9h7M12 9v7" />
+  </Svg>
+);
+
+export const PenIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 20c3-1 4-4 6.5-6.5L17 7l-2-2-6.5 6.5C6 14 5 17 4 20z" />
+    <path d="M14 6l2.5 2.5" />
+  </Svg>
+);
+
+export const ImageIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
+    <circle cx="9" cy="10" r="1.6" />
+    <path d="m4 18 5.5-5 4 3.5 2.5-2 4 3.5" />
+  </Svg>
+);
+
+export const NoteIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4.5 4.5h15v11l-4 4h-11z" />
+    <path d="M15.5 19.5v-4h4" />
+    <path d="M8 9h8M8 12.5h5" />
+  </Svg>
+);
+
+export const UnderlineIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7.5 4.5v6a4.5 4.5 0 0 0 9 0v-6" />
+    <path d="M5.5 20h13" />
+  </Svg>
+);
+
+export const StrikeIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M16.5 6.5c-.8-1.3-2.4-2-4.5-2-2.6 0-4.3 1.3-4.3 3.2 0 1.6 1.2 2.5 3.3 3.1" />
+    <path d="M4.5 12h15" />
+    <path d="M7.5 17c.8 1.5 2.5 2.5 4.6 2.5 2.7 0 4.4-1.3 4.4-3.3 0-.9-.3-1.6-.9-2.2" />
+  </Svg>
+);
+
+export const RectIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="4" y="6" width="16" height="12" rx="1" />
+  </Svg>
+);
+
+export const EllipseIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <ellipse cx="12" cy="12" rx="8.5" ry="6.5" />
+  </Svg>
+);
+
+export const LineIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M5 19 19 5" />
+  </Svg>
+);
+
+export const ArrowIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M5 19 19 5M10 5h9v9" />
+  </Svg>
+);
+
+export const StampIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M9.5 12.5 9 5.5a3 3 0 0 1 6 0l-.5 7" />
+    <path d="M5 13h14v3.5H5z" />
+    <path d="M6 20.5h12" />
+  </Svg>
+);
+
+export const RedoIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M15 14l5-5-5-5" />
+    <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />
+  </Svg>
+);
+
+export const CheckIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m5 12.5 4.5 4.5L19 7.5" />
+  </Svg>
+);
+
+export const CommentsIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4.5 5.5h15v10h-8l-4.5 3.5v-3.5h-2.5z" />
+  </Svg>
+);

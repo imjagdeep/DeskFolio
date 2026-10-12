@@ -1,5 +1,6 @@
-// The open PDF: its bytes (the source of truth for every edit), the pdf.js
-// copy used for drawing it, an undo stack, recent files, and saving.
+// The open PDFs (one per tab): their bytes (the source of truth for every
+// edit), the pdf.js copy used for drawing, an undo stack each, recent files,
+// and saving. Everything that says "the document" means the active tab.
 //
 // Edits never touch the file on disk until you save, and "Save as" (a new
 // file next to the original) is the default.
@@ -12,6 +13,8 @@ import { closePdf, loadPdf, PasswordNeeded, type PDFDocumentProxy } from "./pdfj
 import { createStore, toast, toastError } from "./store";
 
 export interface OpenDoc {
+  /** Stable for the life of the tab. */
+  id: number;
   path: string;
   name: string;
   bytes: Uint8Array;
@@ -27,13 +30,70 @@ export interface OpenDoc {
   rev: number;
 }
 
+interface Tabs {
+  docs: OpenDoc[];
+  /** The tab shown; null = the Home tab. */
+  active: number | null;
+}
+const tabsStore = createStore<Tabs>({ docs: [], active: null });
+const activeOf = (t: Tabs) => t.docs.find((d) => d.id === t.active) ?? null;
+
+// The active document as its own store, so components that only care about
+// it don't redraw when another tab changes.
 const docStore = createStore<OpenDoc | null>(null);
+tabsStore.subscribe(() => {
+  const d = activeOf(tabsStore.get());
+  if (d !== docStore.get()) docStore.set(d);
+});
 export const useDoc = () => useSyncExternalStore(docStore.subscribe, docStore.get);
 export const currentDoc = () => docStore.get();
+export const useTabs = () => useSyncExternalStore(tabsStore.subscribe, tabsStore.get);
 
-/** Earlier versions of the open file, for Undo. */
-let undoStack: { bytes: Uint8Array; edits: string[]; pages: number }[] = [];
+/** Replace one document (by id) with a new version of it. */
+function putDoc(next: OpenDoc) {
+  const t = tabsStore.get();
+  tabsStore.set({ ...t, docs: t.docs.map((d) => (d.id === next.id ? next : d)) });
+}
+
+/** Earlier versions of each open file, for Undo. */
+type UndoEntry = { bytes: Uint8Array; edits: string[]; pages: number };
+const undoStacks = new Map<number, UndoEntry[]>();
+function stackOf(id: number): UndoEntry[] {
+  let st = undoStacks.get(id);
+  if (!st) {
+    st = [];
+    undoStacks.set(id, st);
+  }
+  return st;
+}
 const MAX_UNDO = 15;
+let nextId = 1;
+
+/** Show a tab (null = Home). */
+export function activate(id: number | null) {
+  const t = tabsStore.get();
+  if (id !== null && !t.docs.some((d) => d.id === id)) return;
+  if (t.active !== id) tabsStore.set({ ...t, active: id });
+}
+
+/** Ctrl+Tab / Ctrl+Shift+Tab: the next or previous tab, Home included. */
+export function cycleTab(dir: 1 | -1) {
+  const t = tabsStore.get();
+  const order: (number | null)[] = [null, ...t.docs.map((d) => d.id)];
+  const at = order.indexOf(t.active);
+  activate(order[(at + dir + order.length) % order.length]);
+}
+
+/** Move a tab to another position (drag and drop in the tab strip). */
+export function moveTab(id: number, to: number) {
+  const t = tabsStore.get();
+  const from = t.docs.findIndex((d) => d.id === id);
+  if (from < 0) return;
+  const docs = [...t.docs];
+  const [d] = docs.splice(from, 1);
+  docs.splice(Math.max(0, Math.min(to, docs.length)), 0, d);
+  tabsStore.set({ ...t, docs });
+}
 
 // ---------- password prompt (answered by the PasswordDialog component) ----------
 
@@ -104,14 +164,13 @@ export function forgetRecent(path: string) {
   }
 }
 
-// ---------- opening ----------
+// ---------- opening and closing ----------
 
-/** True when it is fine to replace the open document (asks if unsaved). */
-async function okToReplace(): Promise<boolean> {
-  const d = docStore.get();
-  if (!d?.dirty) return true;
+/** True when it is fine to close this document (asks if unsaved). */
+async function okToClose(d: OpenDoc): Promise<boolean> {
+  if (!d.dirty) return true;
   const { ask } = await import("@tauri-apps/plugin-dialog");
-  return ask(`${d.name} has changes that aren't saved. Open another file and lose them?`, {
+  return ask(`${d.name} has changes that aren't saved. Close it and lose them?`, {
     title: "Unsaved changes",
     kind: "warning",
     okLabel: "Discard changes",
@@ -119,16 +178,20 @@ async function okToReplace(): Promise<boolean> {
   });
 }
 
+/** Open a PDF in a new tab, or show its tab if it is already open. */
 export async function openPath(path: string): Promise<boolean> {
   try {
-    if (!(await okToReplace())) return false;
+    const same = tabsStore.get().docs.find((d) => d.path.toLowerCase() === path.toLowerCase());
+    if (same) {
+      activate(same.id);
+      return true;
+    }
     const bytes = await api.readFile(path);
     const name = fileName(path);
     const loaded = await loadWithPassword(bytes, name);
     if (!loaded) return false;
-    { const old = docStore.get(); if (old) closePdf(old.pdf); }
-    undoStack = [];
-    docStore.set({
+    const doc: OpenDoc = {
+      id: nextId++,
       path,
       name,
       bytes,
@@ -138,7 +201,9 @@ export async function openPath(path: string): Promise<boolean> {
       dirty: false,
       edits: [],
       rev: 1,
-    });
+    };
+    const t = tabsStore.get();
+    tabsStore.set({ docs: [...t.docs, doc], active: doc.id });
     remember(path);
     return true;
   } catch (e) {
@@ -153,31 +218,84 @@ export async function pickPdfs(multiple: boolean, title = "Open PDF"): Promise<s
   return Array.isArray(r) ? r : [r];
 }
 
+/** File › Open: one or more PDFs, each in its own tab. */
 export async function openDialog(): Promise<boolean> {
   try {
-    const [p] = await pickPdfs(false);
-    return p ? openPath(p) : false;
+    const paths = await pickPdfs(true);
+    let any = false;
+    for (const p of paths) any = (await openPath(p)) || any;
+    return any;
   } catch (e) {
     toastError(e);
     return false;
   }
 }
 
+/**
+ * Close a tab (the active one by default), asking first if it has unsaved
+ * changes. The tab to its left (or Home) becomes active.
+ */
+export async function closeDoc(id: number | null = tabsStore.get().active): Promise<boolean> {
+  if (id === tabsStore.get().active) await flushPending();
+  const t = tabsStore.get();
+  const at = t.docs.findIndex((d) => d.id === id);
+  if (at < 0) return false;
+  const d = t.docs[at];
+  if (!(await okToClose(d))) return false;
+  closePdf(d.pdf);
+  undoStacks.delete(d.id);
+  const now = tabsStore.get();
+  const docs = now.docs.filter((x) => x.id !== d.id);
+  let active = now.active;
+  if (active === d.id) active = docs[Math.max(0, at - 1)]?.id ?? null;
+  tabsStore.set({ docs, active });
+  return true;
+}
+
+/** Before the app quits: asks when any tab has unsaved changes. */
+export async function okToQuit(): Promise<boolean> {
+  await flushPending();
+  const dirty = tabsStore.get().docs.filter((d) => d.dirty);
+  if (!dirty.length) return true;
+  const { ask } = await import("@tauri-apps/plugin-dialog");
+  const what = dirty.length === 1 ? `${dirty[0].name} has changes that aren't saved.` : `${dirty.length} documents have changes that aren't saved.`;
+  return ask(`${what} Quit and lose them?`, {
+    title: "Unsaved changes",
+    kind: "warning",
+    okLabel: "Quit without saving",
+    cancelLabel: "Keep editing",
+  });
+}
+
 // ---------- editing ----------
 
 /**
- * Replace the open document with edited bytes (from a tool). The previous
- * version goes on the undo stack.
+ * Marks drawn in the viewer (highlights, notes, drawings...) live in pdf.js
+ * until they are written into the file's bytes. The viewer registers how to
+ * do that here, and saving, closing and quitting call it first.
  */
-export async function applyEdit(bytes: Uint8Array, what: string): Promise<boolean> {
-  const d = docStore.get();
+let pendingFlush: (() => Promise<void>) | null = null;
+export function setPendingFlush(fn: (() => Promise<void>) | null) {
+  pendingFlush = fn;
+}
+export async function flushPending(): Promise<void> {
+  if (pendingFlush) await pendingFlush();
+}
+
+/**
+ * Replace the active document with edited bytes (from a tool). The previous
+ * version goes on its undo stack.
+ */
+export async function applyEdit(bytes: Uint8Array, what: string, id: number | null = tabsStore.get().active): Promise<boolean> {
+  const d = tabsStore.get().docs.find((x) => x.id === id);
   if (!d) return false;
   try {
     const pdf = await loadPdf(bytes, d.password);
-    undoStack.push({ bytes: d.bytes, edits: d.edits, pages: d.pages });
-    if (undoStack.length > MAX_UNDO) undoStack.shift();
+    const stack = stackOf(d.id);
+    stack.push({ bytes: d.bytes, edits: d.edits, pages: d.pages });
+    if (stack.length > MAX_UNDO) stack.shift();
     closePdf(d.pdf);
-    docStore.set({ ...d, bytes, pdf, pages: pdf.numPages, dirty: true, edits: [...d.edits, what], rev: d.rev + 1 });
+    putDoc({ ...d, bytes, pdf, pages: pdf.numPages, dirty: true, edits: [...d.edits, what], rev: d.rev + 1 });
     return true;
   } catch (e) {
     toastError(e);
@@ -185,22 +303,27 @@ export async function applyEdit(bytes: Uint8Array, what: string): Promise<boolea
   }
 }
 
-export const canUndo = () => undoStack.length > 0;
+export function canUndo(): boolean {
+  const d = docStore.get();
+  return !!d && stackOf(d.id).length > 0;
+}
 
 export async function undo(): Promise<void> {
   const d = docStore.get();
-  const prev = undoStack.pop();
-  if (!d || !prev) return;
+  if (!d) return;
+  const stack = stackOf(d.id);
+  const prev = stack.pop();
+  if (!prev) return;
   try {
     const pdf = await loadPdf(prev.bytes, d.password);
     closePdf(d.pdf);
-    docStore.set({
+    putDoc({
       ...d,
       bytes: prev.bytes,
       pdf,
       pages: pdf.numPages,
       edits: prev.edits,
-      dirty: undoStack.length > 0 || prev.edits.length > 0,
+      dirty: stack.length > 0 || prev.edits.length > 0,
       rev: d.rev + 1,
     });
     toast("Undone");
@@ -218,13 +341,14 @@ export async function pickSavePath(defaultPath: string, kind = "PDF", ext = "pdf
 }
 
 export async function saveAs(): Promise<string | null> {
+  await flushPending();
   const d = docStore.get();
   if (!d) return null;
   try {
     const target = await pickSavePath(siblingPath(d.path, "edited"));
     if (!target) return null;
     await api.writeFile(target, d.bytes);
-    docStore.set({ ...d, path: target, name: fileName(target), dirty: false });
+    putDoc({ ...d, path: target, name: fileName(target), dirty: false });
     remember(target);
     toast(`Saved ${fileName(target)}`);
     return target;
@@ -236,6 +360,7 @@ export async function saveAs(): Promise<string | null> {
 
 /** Write over the file it came from (asks first). */
 export async function saveOver(): Promise<boolean> {
+  await flushPending();
   const d = docStore.get();
   if (!d) return false;
   try {
@@ -248,7 +373,7 @@ export async function saveOver(): Promise<boolean> {
     });
     if (!ok) return false;
     await api.writeFile(d.path, d.bytes);
-    docStore.set({ ...d, dirty: false });
+    putDoc({ ...d, dirty: false });
     toast(`Saved ${d.name}`);
     return true;
   } catch (e) {
@@ -269,10 +394,4 @@ export async function saveBytes(bytes: Uint8Array, defaultPath: string, kind = "
     toastError(e);
     return null;
   }
-}
-
-export function closeDoc() {
-  { const old = docStore.get(); if (old) closePdf(old.pdf); }
-  undoStack = [];
-  docStore.set(null);
 }

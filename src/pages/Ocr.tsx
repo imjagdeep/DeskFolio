@@ -46,7 +46,7 @@ export function Ocr() {
       if (ok) {
         toast(
           r.words
-            ? `Found ${plural(r.words, "word")} on ${plural(r.read, "page")}. Check it in View with Find, then save.`
+            ? `Found ${plural(r.words, "word")} on ${plural(r.read, "page")}. Go back to the document and try Find (Ctrl+F), then save.`
             : `No text was found on ${plural(r.read, "page")}. The pages may be photos, or the scan too faint.`,
         );
       }
@@ -78,7 +78,7 @@ export function Ocr() {
         </p>
       </div>
       <div className="action-bar">
-        <span className="muted">{busy ? status : "Nothing is saved until you choose Save in View."}</span>
+        <span className="muted">{busy ? status : "Nothing is saved until you choose Save as… (top right)."}</span>
         <div className="page-actions">
           <button className="primary" disabled={busy} onClick={() => void run()}>
             {busy ? "Reading…" : "Make searchable"}
