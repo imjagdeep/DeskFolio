@@ -2,6 +2,7 @@
 //! PDF work happens), updates.
 
 mod compress;
+mod desklab;
 mod files;
 mod office;
 
@@ -152,13 +153,26 @@ fn open_link(app: AppHandle, id: String) -> CmdResult<()> {
     let url = match id.as_str() {
         "releases" => "https://github.com/imjagdeep/DeskFolio/releases/latest",
         "developer" => "https://github.com/imjagdeep",
-        "deskzero" => "https://github.com/imjagdeep/DeskZero",
-        "deskmedic" => "https://github.com/imjagdeep/DeskMedic",
+        "deskzero" => "https://github.com/imjagdeep/DeskZero/releases/latest",
+        "deskmedic" => "https://github.com/imjagdeep/DeskMedic/releases/latest",
+        "deskfolio" => "https://github.com/imjagdeep/DeskFolio/releases/latest",
         _ => return Err(format!("unknown link {id}")),
     };
     app.opener()
         .open_url(url, None::<&str>)
         .map_err(|e| e.to_string())
+}
+
+/// The other DeskLab tools and whether each is installed here.
+#[tauri::command]
+fn desklab_tools() -> Vec<desklab::LabTool> {
+    desklab::list("deskfolio")
+}
+
+/// Start another DeskLab tool, optionally handing it one file.
+#[tauri::command]
+fn open_tool(id: String, file: Option<PathBuf>) -> CmdResult<()> {
+    desklab::open(&id, file.as_deref())
 }
 
 /// A downloaded update is ready.
@@ -215,6 +229,8 @@ pub fn run() {
             take_startup_paths,
             reveal_file,
             open_link,
+            desklab_tools,
+            open_tool,
             notify_update,
         ])
         .build(tauri::generate_context!())

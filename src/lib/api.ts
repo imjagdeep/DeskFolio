@@ -7,6 +7,12 @@ export interface AppInfo {
   platform: string;
 }
 
+export type LabToolId = "deskzero" | "deskmedic" | "deskfolio";
+export interface LabTool {
+  id: LabToolId;
+  installed: boolean;
+}
+
 export const api = {
   appInfo: () => invoke<AppInfo>("app_info"),
   /** The file's bytes (sent raw, not as JSON). */
@@ -27,7 +33,11 @@ export const api = {
   officeToPdf: async (path: string) => new Uint8Array(await invoke<ArrayBuffer>("office_to_pdf", { path })),
   takeStartupPaths: () => invoke<string[]>("take_startup_paths"),
   revealFile: (path: string) => invoke<void>("reveal_file", { path }),
-  openLink: (id: "releases" | "developer" | "deskzero" | "deskmedic") => invoke<void>("open_link", { id }),
+  openLink: (id: "releases" | "developer" | LabToolId) => invoke<void>("open_link", { id }),
+  /** The other DeskLab tools and whether each is installed here. */
+  desklabTools: () => invoke<LabTool[]>("desklab_tools"),
+  /** Start an installed DeskLab tool, optionally with a file for it to open. */
+  openTool: (id: LabToolId, file?: string) => invoke<void>("open_tool", { id, file: file ?? null }),
   notifyUpdate: (version: string) => invoke<void>("notify_update", { version }),
 };
 

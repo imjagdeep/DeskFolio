@@ -1,4 +1,5 @@
 import { PageHeader } from "../components/Common";
+import { DeskLabTools } from "../components/DeskLab";
 import { api } from "../lib/api";
 import { setAutoUpdate, setTheme, toastError, useAppInfo, useAutoUpdate, useTheme, type Theme } from "../lib/store";
 import { checkAndDownload, installNow, useUpdate } from "../lib/updates";
@@ -62,15 +63,7 @@ export function SettingsPage() {
           </span>
         </label>
         <div className="more-tools">
-          <div className="muted small">More free tools by the same developer</div>
-          <button className="tool-link" onClick={() => api.openLink("deskzero").catch(toastError)}>
-            <strong>DeskZero</strong>
-            <span className="muted small">Keeps your folders organized and finds anything fast. Windows, macOS and Linux.</span>
-          </button>
-          <button className="tool-link" onClick={() => api.openLink("deskmedic").catch(toastError)}>
-            <strong>DeskMedic</strong>
-            <span className="muted small">Windows helpdesk toolkit: health check, disk map, cleanup and one-click remedies.</span>
-          </button>
+          <DeskLabTools own="deskfolio" />
           <div className="muted small made-by">
             Open source, MIT licence. Made by Jagdeep Sandhu ·{" "}
             <button className="link" onClick={() => api.openLink("developer").catch(toastError)}>
