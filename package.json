@@ -19,9 +19,11 @@
     "@tauri-apps/plugin-process": "^2.4.0",
     "@tauri-apps/plugin-updater": "^2.13.3",
     "@tesseract.js-data/eng": "^1.0.0",
+    "asn1js": "^3.0.10",
     "docx": "^9.10.0",
     "fflate": "^0.8.3",
     "pdfjs-dist": "^6.4.299",
+    "pkijs": "^3.4.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tesseract.js": "^7.0.0"

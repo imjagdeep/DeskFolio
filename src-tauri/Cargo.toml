@@ -28,6 +28,8 @@ serde_json = "1"
 tracing = "0.1"
 lopdf = "0.45"
 image = { version = "0.25", default-features = false, features = ["jpeg"] }
+# Digital IDs: reading and writing .pfx / .p12 files (incl. older Windows exports).
+p12-keystore = "0.4"
 
 [dev-dependencies]
 tempfile = "3"

@@ -3,6 +3,7 @@
 
 mod compress;
 mod desklab;
+mod digitalid;
 mod files;
 mod office;
 
@@ -30,6 +31,48 @@ fn app_info(app: AppHandle) -> AppInfo {
         version: app.package_info().version.to_string(),
         platform: std::env::consts::OS,
     }
+}
+
+// ---------- digital IDs (signing) ----------
+
+fn ids_dir(app: &AppHandle) -> CmdResult<PathBuf> {
+    let base = app.path().app_data_dir().map_err(|e| format!("no app data folder: {e}"))?;
+    digitalid::ids_dir(&base)
+}
+
+/// Read a .pfx / .p12 the user picked.
+#[tauri::command]
+async fn digital_id_import(path: PathBuf, password: String) -> CmdResult<digitalid::IdParts> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let data = files::read(&path)?;
+        digitalid::import(&data, &password)
+    })
+    .await
+    .map_err(|e| format!("background task failed: {e}"))?
+}
+
+/// Write a digital ID as a .pfx (backup or use elsewhere).
+#[tauri::command]
+async fn digital_id_export(path: PathBuf, cert: Vec<u8>, chain: Vec<Vec<u8>>, pkcs8: Vec<u8>, password: String, alias: String) -> CmdResult<()> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let pfx = digitalid::export(&digitalid::IdParts { cert, chain, pkcs8 }, &password, &alias)?;
+        files::write_atomic(&path, &pfx)
+    })
+    .await
+    .map_err(|e| format!("background task failed: {e}"))?
+}
+
+/// Where saved (encrypted) IDs live, and which there are.
+#[tauri::command]
+fn digital_ids(app: AppHandle) -> CmdResult<(String, Vec<String>)> {
+    let dir = ids_dir(&app)?;
+    let names = digitalid::list(&dir)?;
+    Ok((dir.to_string_lossy().into_owned(), names))
+}
+
+#[tauri::command]
+fn digital_id_delete(app: AppHandle, name: String) -> CmdResult<()> {
+    digitalid::delete(&ids_dir(&app)?, &name)
 }
 
 /// The file's bytes, as a raw response (no JSON number arrays).
@@ -235,6 +278,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             app_info,
             read_file,
+            digital_id_import,
+            digital_id_export,
+            digital_ids,
+            digital_id_delete,
             write_file,
             compress_pdf,
             office_converters,
