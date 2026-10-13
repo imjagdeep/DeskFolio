@@ -24,7 +24,7 @@ import {
 import { setTheme, toastError, useTheme, type Theme } from "./lib/store";
 import { checkAndDownload } from "./lib/updates";
 import type { Entry, MenuDef } from "./shell/menu";
-import { editCommand, openShellDialog, pasteText, setZoom, textFieldFocused, toggleFullscreen, zoomStep } from "./shell/shell";
+import { editCommand, isCompactSidebar, openShellDialog, pasteText, setZoom, textFieldFocused, toggleFullscreen, toggleSidebar, zoomStep } from "./shell/shell";
 import { focusSearch, togglePanel, usePanel } from "./workspace/panels";
 import { printDocument } from "./workspace/print";
 import { editAction, forgetView, rotateView, SCROLL, setDark, setScale, setScroll, setSpread, SPREAD, useView, zoom, goToPage } from "./workspace/viewer";
@@ -131,6 +131,7 @@ export function useAppMenus(page: Page, go: (p: Page) => void): MenuDef[] {
       label: "View",
       items: [
         { id: "side-panel", label: "Side panel", accel: "F4", enabled: reading, checked: () => panel !== null, run: togglePanel },
+        { id: "tool-names", label: "Show tool names", accel: "Mod+B", checked: () => !isCompactSidebar(), run: toggleSidebar },
         "-",
         { id: "zoom-in", label: "Zoom in", accel: "Mod+=", run: () => (reading() ? zoom(1) : zoomStep(1)) },
         { id: "zoom-out", label: "Zoom out", accel: "Mod+-", run: () => (reading() ? zoom(-1) : zoomStep(-1)) },
