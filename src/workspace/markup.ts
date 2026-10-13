@@ -8,7 +8,7 @@ import { addMarks, STAMPS, type Mark, type RGB } from "../lib/pdf/markup";
 import { createStore, toastError } from "../lib/store";
 import { EDIT, setEditMode, viewMode } from "./viewer";
 
-export type OwnTool = "note" | "underline" | "strikeout" | "square" | "circle" | "line" | "arrow" | "stamp" | "redact";
+export type OwnTool = "note" | "underline" | "strikeout" | "square" | "circle" | "line" | "arrow" | "stamp" | "redact" | "edittext" | "editimage" | "link";
 
 export interface MarkupState {
   tool: OwnTool | null;

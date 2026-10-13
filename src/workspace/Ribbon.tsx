@@ -5,6 +5,9 @@
 import { useState } from "react";
 import {
   ActualSizeIcon,
+  ImageEditIcon,
+  LinkIcon,
+  TextEditIcon,
   EraserIcon,
   LockIcon,
   RedactIcon,
@@ -105,10 +108,11 @@ interface Group {
   /** Controls that aren't buttons (colours, sizes). */
   extra?: React.ReactNode;
 }
-type RibbonTab = "view" | "comment" | "pages" | "protect" | "sign" | "convert";
+type RibbonTab = "view" | "comment" | "edit" | "pages" | "protect" | "sign" | "convert";
 const TABS: { id: RibbonTab; label: string }[] = [
   { id: "view", label: "View" },
   { id: "comment", label: "Comment" },
+  { id: "edit", label: "Edit" },
   { id: "pages", label: "Pages" },
   { id: "protect", label: "Protect" },
   { id: "sign", label: "Fill & Sign" },
@@ -401,6 +405,27 @@ export function Ribbon() {
         ],
       },
     ],
+    edit: [
+      {
+        label: "Text",
+        items: [
+          { id: "edit-text", label: "Edit text", Icon: TextEditIcon, run: ownTool("edittext"), on: isOwn("edittext"), off: !reading, big: true, tip: "Click a line to change its words" },
+          { id: "add-text", label: "Add text", Icon: TextBoxIcon, run: pdfTool(EDIT.text), on: pdfOn(EDIT.text), off: !reading, tip: "Click anywhere and type" },
+        ],
+      },
+      {
+        label: "Images",
+        items: [
+          { id: "edit-image", label: "Edit images", Icon: ImageEditIcon, run: ownTool("editimage"), on: isOwn("editimage"), off: !reading, big: true, tip: "Click an image to move, resize, replace or delete it" },
+          { id: "add-image", label: "Add image", Icon: ImageIcon, run: pdfTool(EDIT.image), on: pdfOn(EDIT.image), off: !reading, tip: "Put a picture on the page" },
+        ],
+      },
+      {
+        label: "Links",
+        items: [{ id: "link", label: "Link", Icon: LinkIcon, run: ownTool("link"), on: isOwn("link"), off: !reading, big: true, tip: "Drag an area to link it; click a link to remove it" }],
+      },
+      { label: "Style", items: [], extra: markup.tool === null && view.mode === EDIT.text ? styleControls : null },
+    ],
     pages: [
       {
         label: "Arrange",
@@ -493,7 +518,7 @@ export function Ribbon() {
         </div>
       </div>
       <div className="ribbon-body" role="toolbar" aria-label={TABS.find((t) => t.id === chosen)?.label}>
-        {groups[chosen].map((g) => (
+        {groups[chosen].filter((g) => g.items.length || g.extra).map((g) => (
           <div className="ribbon-group" key={g.label}>
             <div className="ribbon-items">
               {g.items.map((b) => (

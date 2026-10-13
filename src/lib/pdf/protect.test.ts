@@ -43,11 +43,12 @@ describe("passwords", () => {
     expect(await textOf(enc, 1, "open123")).toContain("secret");
 
     const { bytes: plain, protection } = await decrypt(enc, "open123");
+    if (!protection) throw new Error("protection not found");
     expect(protection?.openPassword).toBe("open123");
     expect(await textOf(plain)).toContain("secret");
     // An edit on the plain bytes, then the protection goes back on.
     const edited = await addMarks(plain, [{ kind: "note", page: 0, at: [10, 390], note: "hi", color: [1, 1, 0] }]);
-    const again = await encrypt(edited, protection!);
+    const again = await encrypt(edited, protection);
     expect(await textOf(again)).toBeNull();
     expect(await textOf(again, 1, "open123")).toContain("secret");
   });
@@ -57,10 +58,11 @@ describe("passwords", () => {
     doc.encrypt({ userPassword: "", ownerPassword: "bank-owner", permissions: { copying: false, modifying: false, printing: "highResolution" } });
     const restricted = await doc.save();
     const { bytes: plain, protection } = await decrypt(restricted);
+    if (!protection) throw new Error("protection not found");
     expect(protection).toMatchObject({ openPassword: "", permissions: { copy: false, edit: false, print: true } });
     // A new owner password we don't know the old one of, so the restrictions stay locked.
-    expect(protection!.ownerPassword).not.toBe("");
-    const again = await encrypt(plain, protection!);
+    expect(protection.ownerPassword).not.toBe("");
+    const again = await encrypt(plain, protection);
     expect(await textOf(again)).toContain("secret");
     const pdf = await getDocument({ data: again.slice(), standardFontDataUrl: FONTS }).promise;
     const perms = await pdf.getPermissions();

@@ -484,3 +484,27 @@ export const EraserIcon = (p: IconProps) => (
     <path d="M9 9.5l5 5M11 18h9" />
   </Svg>
 );
+
+// ---------- edit ----------
+
+export const TextEditIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 6V4.5h12V6M10 4.5v13M8 17.5h4" />
+    <path d="m14.5 19.5 1-3.5 4.5-4.5 2.5 2.5-4.5 4.5z" />
+  </Svg>
+);
+
+export const ImageEditIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3.5" y="4.5" width="13" height="11" rx="1.2" />
+    <path d="m4 14 4-3.5 3 2.5 2-1.5 3.5 2.5" />
+    <path d="m13.5 20.5 1-3.5 4.5-4.5 2.5 2.5-4.5 4.5z" />
+  </Svg>
+);
+
+export const LinkIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />
+    <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+  </Svg>
+);

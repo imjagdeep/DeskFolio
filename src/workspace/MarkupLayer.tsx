@@ -46,7 +46,8 @@ export function MarkupLayer({ container }: { container: React.RefObject<HTMLDivE
 
   useEffect(() => {
     const c = container.current;
-    if (!c || !m.tool) return;
+    // The editing tools (text, images, links) are handled by EditLayer.
+    if (!c || !m.tool || m.tool === "edittext" || m.tool === "editimage" || m.tool === "link") return;
     const tool = m.tool;
 
     const down = (e: PointerEvent) => {

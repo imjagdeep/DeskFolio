@@ -243,3 +243,22 @@
 .redact-actions { display: flex; justify-content: flex-end; gap: 6px; }
 button.danger-fill { background: #d32f2f; color: #fff; }
 button.danger-fill:hover:not(:disabled) { background: #b71c1c; filter: none; }
+
+/* ---------- edit text, images, links ---------- */
+.docview.edit-text .pdfViewer .textLayer span { cursor: text; border-radius: 2px; }
+.docview.edit-text .pdfViewer .textLayer span:hover { outline: 1.5px solid #2563eb; background: rgba(37, 99, 235, 0.08); }
+.docview.edit-image .pdfViewer .textLayer, .docview.edit-image .pdfViewer .annotationLayer { pointer-events: none; user-select: none; }
+.docview.edit-image .pdfViewer .page { cursor: pointer; }
+.edit-ui { position: absolute; z-index: 45; }
+.text-edit { padding: 4px; border-radius: 8px; background: var(--window); box-shadow: var(--shadow-lg), 0 0 0 1.5px #2563eb; color: var(--text); }
+.text-edit input { width: 100%; height: auto; min-height: 28px; padding: 2px 6px; font-family: inherit; }
+.edit-actions { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.edit-actions .muted { margin-right: auto; white-space: nowrap; }
+.edit-actions button { height: 24px; font-size: 12px; }
+.img-sel { box-shadow: 0 0 0 2px #2563eb; background: rgba(37, 99, 235, 0.06); cursor: move; touch-action: none; }
+.img-handle { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; border-radius: 3px; background: #2563eb; box-shadow: 0 0 0 2px #fff; cursor: nwse-resize; }
+.img-tools { position: absolute; left: 0; top: -34px; display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: var(--window); box-shadow: var(--shadow-lg); cursor: default; white-space: nowrap; }
+.img-tools button { height: 24px; font-size: 12px; }
+.link-draft { position: absolute; z-index: 40; border: 1.5px dashed #2563eb; background: rgba(37, 99, 235, 0.08); pointer-events: none; }
+.link-pop { width: 260px; padding: 6px; border-radius: 8px; background: var(--window); box-shadow: var(--shadow-lg); color: var(--text); }
+.link-pop input { width: 100%; height: 28px; }

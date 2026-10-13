@@ -55,12 +55,12 @@ describe("overlays", () => {
     for (const [no, label] of [[1, "Page 1 of 3"], [2, "Page 2 of 3"], [3, "Page 3 of 3"]] as const) {
       const items = await seen(out, no);
       const f = items.find((i) => i.str === label);
-      expect(f, `page ${no}`).toBeTruthy();
+      if (!f) throw new Error(`no footer on page ${no}`);
       // Near the bottom edge, roughly centred, upright (left of centre where it starts).
-      expect(f!.y).toBeGreaterThan(f!.h - 40);
-      expect(f!.y).toBeLessThan(f!.h - 15);
-      expect(f!.x).toBeGreaterThan(f!.w / 2 - 60);
-      expect(f!.x).toBeLessThan(f!.w / 2);
+      expect(f.y).toBeGreaterThan(f.h - 40);
+      expect(f.y).toBeLessThan(f.h - 15);
+      expect(f.x).toBeGreaterThan(f.w / 2 - 60);
+      expect(f.x).toBeLessThan(f.w / 2);
     }
     // The rotated page is seen landscape.
     expect((await seen(out, 2))[0].w).toBe(842);
