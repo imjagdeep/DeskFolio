@@ -101,8 +101,10 @@ export default function App() {
 
   return (
     <div className="app-frame">
-      <MenuBar appName="DeskFolio" menus={menus} onError={toastError} />
-      <TabStrip />
+      <div className="top-row">
+        <MenuBar appName="DeskFolio" menus={menus} onError={toastError} compact />
+        <TabStrip />
+      </div>
       <div className="app app-workspace">
         <Workspace />
       </div>

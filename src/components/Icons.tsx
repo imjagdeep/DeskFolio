@@ -155,6 +155,18 @@ export const SearchIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const ChevronUpIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m6 14.5 6-6 6 6" />
+  </Svg>
+);
+
+export const ChevronDownIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m6 9.5 6 6 6-6" />
+  </Svg>
+);
+
 export const ChevronLeftIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="m14.5 6-6 6 6 6" />

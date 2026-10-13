@@ -70,7 +70,7 @@ import { STAMPS } from "../lib/pdf/markup";
 import { toggleFullscreen } from "../shell/shell";
 import { clearOwnTool, HEX_RGB, RGB_HEX, setMarkup, setOwnTool, useMarkup, type OwnTool } from "./markup";
 import type { Page } from "./pages";
-import { setPanel, usePanel } from "./panels";
+import { focusSearch, setPanel, usePanel } from "./panels";
 import { printDocument } from "./print";
 import { go, usePage } from "./route";
 import {
@@ -519,52 +519,81 @@ export function Ribbon() {
   };
 
   if (!doc) return null;
+  // Option controls (colours, sizes, stamps) show above the page only while a
+  // tool that uses them is active.
+  const drawing = markup.tool !== null || view.mode !== EDIT.none;
+  const options = groups[chosen].filter((g) => g.extra && (g.label === "Stamp" ? markup.tool === "stamp" : drawing));
   return (
-    <div className="ribbon">
-      <div className="ribbon-tabs" role="tablist" aria-label="Tools">
-        {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={chosen === t.id} className={chosen === t.id ? "ribbon-tab active" : "ribbon-tab"} onClick={() => setChosen(t.id)}>
-            {t.label}
-          </button>
-        ))}
-        <div className="ribbon-tabs-end">
+    <>
+      <div className="modebar">
+        <div className="mode-tabs" role="tablist" aria-label="Tools">
+          {TABS.map((t) => (
+            <button key={t.id} role="tab" aria-selected={chosen === t.id} className={chosen === t.id ? "mode-tab active" : "mode-tab"} onClick={() => setChosen(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="mode-end">
           {view.pendingMarks && <span className="pending-note" title="Marks are added to the document when you press Done, save, or switch tabs">Unsaved marks</span>}
-          <button className="ribbon-quick" title="Undo (Ctrl+Z)" aria-label="Undo" disabled={!canUndo()} onClick={() => void undo()}>
-            <UndoIcon size={15} />
+          {doc.protection && (
+            <span className="doc-flag" title={doc.protection.openPassword ? "Opens with a password (kept when you save)" : "Has permission limits (kept when you save)"}>
+              <LockIcon size={12} /> {doc.protection.openPassword ? "Password" : "Limited"}
+            </span>
+          )}
+          {doc.dirty && (
+            <span className="doc-flag" title={doc.edits.slice(-5).join(" · ")}>
+              <span className="status-dot" /> {doc.edits.length} change{doc.edits.length === 1 ? "" : "s"}
+            </span>
+          )}
+          <button className="mode-quick" title="Find in document (Ctrl+F)" aria-label="Find" onClick={() => (go("view"), focusSearch())}>
+            <SearchIcon size={16} />
+          </button>
+          <button className="mode-quick" title="Undo (Ctrl+Z)" aria-label="Undo" disabled={!canUndo()} onClick={() => void undo()}>
+            <UndoIcon size={16} />
+          </button>
+          <button className="mode-quick" title="Print (Ctrl+P)" aria-label="Print" onClick={() => void printDocument(doc).catch(toastError)}>
+            <PrintIcon size={16} />
           </button>
           {doc.dirty && (
-            <button className="ribbon-quick text" title="Save over the original file (Ctrl+Shift+S)" onClick={() => void saveOver()}>
+            <button className="mode-quick text" title="Save over the original file (Ctrl+Shift+S)" onClick={() => void saveOver()}>
               Save
             </button>
           )}
-          <button className="ribbon-quick text primary" title="Save as a new file (Ctrl+S)" onClick={() => void saveAs()}>
+          <button className="mode-quick text primary" title="Save as a new file (Ctrl+S)" onClick={() => void saveAs()}>
             <SaveIcon size={14} /> Save as…
           </button>
         </div>
       </div>
-      <div className="ribbon-body" role="toolbar" aria-label={TABS.find((t) => t.id === chosen)?.label}>
-        {groups[chosen].filter((g) => g.items.length || g.extra).map((g) => (
-          <div className="ribbon-group" key={g.label}>
-            <div className="ribbon-items">
+      <aside className="tool-strip" role="toolbar" aria-orientation="vertical" aria-label={`${TABS.find((t) => t.id === chosen)?.label ?? ""} tools`}>
+        {groups[chosen]
+          .filter((g) => g.items.length)
+          .map((g) => (
+            <div className="strip-group" key={g.label} aria-label={g.label} role="group">
               {g.items.map((b) => (
                 <button
                   key={b.id}
-                  className={`ribbon-btn${b.big ? " big" : ""}${b.on ? " on" : ""}`}
+                  className={`strip-btn${b.on ? " on" : ""}`}
                   disabled={b.off}
-                  title={b.tip ?? b.label}
+                  title={b.tip ? `${b.label}: ${b.tip}` : b.label}
+                  aria-label={b.label}
                   aria-pressed={b.on}
                   onClick={b.run}
                 >
-                  <b.Icon size={b.big ? 22 : 18} />
-                  <span>{b.label}</span>
+                  <b.Icon size={19} />
                 </button>
               ))}
+            </div>
+          ))}
+      </aside>
+      {options.length > 0 && (
+        <div className="tool-options" role="toolbar" aria-label="Tool options">
+          {options.map((g) => (
+            <div className="tool-options-group" key={g.label}>
               {g.extra}
             </div>
-            <div className="ribbon-group-label">{g.label}</div>
-          </div>
-        ))}
-      </div>
-    </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
