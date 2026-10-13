@@ -22,6 +22,7 @@ import { Crop } from "../pages/Crop";
 import { Properties } from "../pages/Properties";
 import { Compare } from "../pages/Compare";
 import { Protect } from "../pages/Protect";
+import { Batch } from "../pages/Batch";
 import { DigitalIds } from "../pages/DigitalIds";
 import { SignDialog } from "./SignDialog";
 import { DocView } from "./DocView";
@@ -65,6 +66,8 @@ function ToolPage({ page }: { page: Page }) {
       return <SettingsPage />;
     case "digitalids":
       return <DigitalIds />;
+    case "batch":
+      return <Batch />;
     case "view":
       return null;
   }

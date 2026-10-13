@@ -39,6 +39,9 @@ export const api = {
   digitalIds: () => invoke<[string, string[]]>("digital_ids"),
   digitalIdDelete: (name: string) => invoke<void>("digital_id_delete", { name }),
   revealFile: (path: string) => invoke<void>("reveal_file", { path }),
+  /** Batch: the PDFs in a folder (sorted), and an output path that doesn't exist yet. */
+  batchListPdfs: (dir: string, recursive: boolean) => invoke<string[]>("batch_list_pdfs", { dir, recursive }),
+  batchFreePath: (path: string) => invoke<string>("batch_free_path", { path }),
   openLink: (id: "site" | "repo" | "issues" | "releases" | "developer" | LabToolId) => invoke<void>("open_link", { id }),
   /** The other DeskLab tools and whether each is installed here. */
   desklabTools: () => invoke<LabTool[]>("desklab_tools"),

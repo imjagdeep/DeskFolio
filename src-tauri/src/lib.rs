@@ -1,6 +1,7 @@
 //! DeskFolio desktop shell: one window, file I/O for the web side (where the
 //! PDF work happens), updates.
 
+mod batch;
 mod compress;
 mod desklab;
 mod digitalid;
@@ -87,6 +88,22 @@ fn digital_ids(app: AppHandle) -> CmdResult<(String, Vec<String>)> {
 #[tauri::command]
 fn digital_id_delete(app: AppHandle, name: String) -> CmdResult<()> {
     digitalid::delete(&ids_dir(&app)?, &name)
+}
+
+// ---------- batch processing ----------
+
+/// The PDFs in a folder (and its subfolders when asked), sorted.
+#[tauri::command]
+async fn batch_list_pdfs(dir: PathBuf, recursive: bool) -> CmdResult<Vec<PathBuf>> {
+    tauri::async_runtime::spawn_blocking(move || batch::list_pdfs(&dir, recursive))
+        .await
+        .map_err(|e| format!("background task failed: {e}"))?
+}
+
+/// A path that doesn't exist yet: the one given, or "name (2).ext"...
+#[tauri::command]
+fn batch_free_path(path: PathBuf) -> CmdResult<PathBuf> {
+    batch::free_path(&path)
 }
 
 /// The file's bytes, as a raw response (no JSON number arrays).
@@ -293,6 +310,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             app_info,
             read_file,
+            batch_list_pdfs,
+            batch_free_path,
             digital_id_import,
             digital_id_export,
             digital_ids,

@@ -71,6 +71,14 @@ export const CompressIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const BatchIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="7" y="3" width="12" height="15" rx="1.5" />
+    <path d="M4.5 6.5v12A2.5 2.5 0 0 0 7 21h9" />
+    <path d="M10 9.5l2 2 3.5-4" />
+  </Svg>
+);
+
 export const SignIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M14.5 4.5 19.5 9.5 9 20H4v-5z" />
