@@ -18,16 +18,12 @@ import {
   WatermarkIcon,
   ArrowIcon,
   CheckIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   CompareIcon,
   CompressIcon,
   ConvertIcon,
   CursorIcon,
   EllipseIcon,
   ExtractIcon,
-  FitPageIcon,
-  FitWidthIcon,
   FullScreenIcon,
   HighlightIcon,
   ImageIcon,
@@ -59,8 +55,6 @@ import {
   TwoPagesIcon,
   UnderlineIcon,
   UndoIcon,
-  ZoomInIcon,
-  ZoomOutIcon,
   type IconType,
 } from "../components/Icons";
 import { applyEdit, canUndo, currentDoc, saveAs, saveOver, undo, useDoc } from "../lib/doc";
@@ -78,7 +72,6 @@ import {
   EDIT,
   editAction,
   HIGHLIGHT_COLORS,
-  nextPage,
   PARAM,
   rotateView,
   SCROLL,
@@ -91,7 +84,6 @@ import {
   SPREAD,
   useView,
   viewPage,
-  zoom,
 } from "./viewer";
 
 interface Btn {
@@ -281,20 +273,10 @@ export function Ribbon() {
 
   const groups: Record<RibbonTab, Group[]> = {
     view: [
-      {
-        label: "Pages",
-        items: [
-          { id: "prev", label: "Previous", Icon: ChevronLeftIcon, run: () => nextPage(-1), off: !reading || view.page <= 1, tip: "Previous page (Page Up)" },
-          { id: "next", label: "Next", Icon: ChevronRightIcon, run: () => nextPage(1), off: !reading || view.page >= view.pages, tip: "Next page (Page Down)" },
-        ],
-      },
+      // Page number, previous/next, zoom and fit are on the right-hand rail.
       {
         label: "Zoom",
         items: [
-          { id: "zoom-out", label: "Zoom out", Icon: ZoomOutIcon, run: () => zoom(-1), off: !reading, tip: "Zoom out (Ctrl+-)" },
-          { id: "zoom-in", label: "Zoom in", Icon: ZoomInIcon, run: () => zoom(1), off: !reading, tip: "Zoom in (Ctrl+=)" },
-          { id: "fit-width", label: "Fit width", Icon: FitWidthIcon, run: () => setScale("page-width"), on: view.preset === "page-width", off: !reading, tip: "Fit width (Ctrl+0)" },
-          { id: "fit-page", label: "Fit page", Icon: FitPageIcon, run: () => setScale("page-fit"), on: view.preset === "page-fit", off: !reading, tip: "Fit page (Ctrl+2)" },
           { id: "actual", label: "Actual size", Icon: ActualSizeIcon, run: () => setScale("page-actual"), on: view.preset === "page-actual", off: !reading, tip: "Actual size (Ctrl+1)" },
         ],
       },
