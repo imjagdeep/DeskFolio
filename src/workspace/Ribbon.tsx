@@ -5,10 +5,22 @@
 import { useState } from "react";
 import {
   ActualSizeIcon,
+  ImageEditIcon,
+  LinkIcon,
+  TextEditIcon,
+  EraserIcon,
+  LockIcon,
+  RedactIcon,
+  BlankPageIcon,
+  CropIcon,
+  HeaderFooterIcon,
+  InfoIcon,
+  WatermarkIcon,
   ArrowIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  CompareIcon,
   CompressIcon,
   ConvertIcon,
   CursorIcon,
@@ -26,6 +38,7 @@ import {
   OcrIcon,
   OrganizeIcon,
   PanelLeftIcon,
+  PrintIcon,
   PenIcon,
   RectIcon,
   RedoIcon,
@@ -48,12 +61,15 @@ import {
   ZoomOutIcon,
   type IconType,
 } from "../components/Icons";
-import { canUndo, saveAs, saveOver, undo, useDoc } from "../lib/doc";
+import { applyEdit, canUndo, currentDoc, saveAs, saveOver, undo, useDoc } from "../lib/doc";
+import { insertBlank } from "../lib/pdf/pagetools";
+import { toastError } from "../lib/store";
 import { STAMPS } from "../lib/pdf/markup";
 import { toggleFullscreen } from "../shell/shell";
 import { clearOwnTool, HEX_RGB, RGB_HEX, setMarkup, setOwnTool, useMarkup, type OwnTool } from "./markup";
 import type { Page } from "./pages";
 import { setPanel, usePanel } from "./panels";
+import { printDocument } from "./print";
 import { go, usePage } from "./route";
 import {
   commitMarks,
@@ -72,6 +88,7 @@ import {
   setSpread,
   SPREAD,
   useView,
+  viewPage,
   zoom,
 } from "./viewer";
 
@@ -91,11 +108,13 @@ interface Group {
   /** Controls that aren't buttons (colours, sizes). */
   extra?: React.ReactNode;
 }
-type RibbonTab = "view" | "comment" | "pages" | "sign" | "convert";
+type RibbonTab = "view" | "comment" | "edit" | "pages" | "protect" | "sign" | "convert";
 const TABS: { id: RibbonTab; label: string }[] = [
   { id: "view", label: "View" },
   { id: "comment", label: "Comment" },
+  { id: "edit", label: "Edit" },
   { id: "pages", label: "Pages" },
+  { id: "protect", label: "Protect" },
   { id: "sign", label: "Fill & Sign" },
   { id: "convert", label: "Convert" },
 ];
@@ -103,6 +122,12 @@ const TABS: { id: RibbonTab; label: string }[] = [
 /** Which ribbon tab belongs to a tool page (so the right one is shown). */
 const TAB_OF: Partial<Record<Page, RibbonTab>> = {
   organize: "pages",
+  watermark: "pages",
+  headerfooter: "pages",
+  crop: "pages",
+  properties: "pages",
+  compare: "pages",
+  protect: "protect",
   split: "pages",
   merge: "pages",
   compress: "pages",
@@ -119,6 +144,18 @@ const HIGHLIGHTS = HIGHLIGHT_COLORS.split(",").map((p) => {
 });
 const WIDTHS = [1, 2, 3, 5, 8];
 const TEXT_SIZES = [8, 10, 12, 14, 18, 24, 32];
+
+/** Insert a blank page after the page on screen. */
+async function addBlank() {
+  const d = currentDoc();
+  if (!d) return;
+  try {
+    const at = Math.min(d.pages, viewPage());
+    await applyEdit(await insertBlank(d.bytes, at, 1, { password: d.password }), `Blank page after page ${at}`);
+  } catch (e) {
+    toastError(e);
+  }
+}
 
 export function Ribbon() {
   const doc = useDoc();
@@ -297,6 +334,7 @@ export function Ribbon() {
           { id: "find", label: "Find", Icon: SearchIcon, run: () => setPanel("search"), on: panel === "search", off: !reading, tip: "Find text (Ctrl+F)" },
           { id: "dark", label: "Reading mode", Icon: MoonIcon, run: () => setDark(!view.dark), on: view.dark, off: !reading, tip: "Light text on dark pages, easier at night" },
           { id: "full", label: "Full screen", Icon: FullScreenIcon, run: () => void toggleFullscreen(), tip: "Full screen (F11)" },
+          { id: "print", label: "Print", Icon: PrintIcon, run: () => { if (doc) void printDocument(doc); }, tip: "Print (Ctrl+P)" },
         ],
       },
     ],
@@ -367,12 +405,49 @@ export function Ribbon() {
         ],
       },
     ],
+    edit: [
+      {
+        label: "Text",
+        items: [
+          { id: "edit-text", label: "Edit text", Icon: TextEditIcon, run: ownTool("edittext"), on: isOwn("edittext"), off: !reading, big: true, tip: "Click a line to change its words" },
+          { id: "add-text", label: "Add text", Icon: TextBoxIcon, run: pdfTool(EDIT.text), on: pdfOn(EDIT.text), off: !reading, tip: "Click anywhere and type" },
+        ],
+      },
+      {
+        label: "Images",
+        items: [
+          { id: "edit-image", label: "Edit images", Icon: ImageEditIcon, run: ownTool("editimage"), on: isOwn("editimage"), off: !reading, big: true, tip: "Click an image to move, resize, replace or delete it" },
+          { id: "add-image", label: "Add image", Icon: ImageIcon, run: pdfTool(EDIT.image), on: pdfOn(EDIT.image), off: !reading, tip: "Put a picture on the page" },
+        ],
+      },
+      {
+        label: "Links",
+        items: [{ id: "link", label: "Link", Icon: LinkIcon, run: ownTool("link"), on: isOwn("link"), off: !reading, big: true, tip: "Drag an area to link it; click a link to remove it" }],
+      },
+      { label: "Style", items: [], extra: markup.tool === null && view.mode === EDIT.text ? styleControls : null },
+    ],
     pages: [
       {
         label: "Arrange",
         items: [
           { id: "organize", label: "Organize pages", Icon: OrganizeIcon, run: tool("organize"), big: true, on: page === "organize", tip: "Reorder, rotate, delete, insert and extract pages" },
+          { id: "blank", label: "Blank page", Icon: BlankPageIcon, run: () => void addBlank(), off: !reading, tip: "Insert a blank page after this one" },
           { id: "extract", label: "Extract pages", Icon: ExtractIcon, run: () => go("organize"), tip: "Select pages in Organize, then Extract" },
+        ],
+      },
+      {
+        label: "Page marks",
+        items: [
+          { id: "watermark", label: "Watermark", Icon: WatermarkIcon, run: tool("watermark"), on: page === "watermark", tip: "DRAFT, CONFIDENTIAL or a picture across pages" },
+          { id: "headerfooter", label: "Header & footer", Icon: HeaderFooterIcon, run: tool("headerfooter"), on: page === "headerfooter", tip: "Page numbers, dates, Bates numbers" },
+          { id: "crop", label: "Crop", Icon: CropIcon, run: tool("crop"), on: page === "crop", tip: "Trim page edges" },
+        ],
+      },
+      {
+        label: "Document",
+        items: [
+          { id: "properties", label: "Properties", Icon: InfoIcon, run: tool("properties"), on: page === "properties", tip: "Title, author, keywords" },
+          { id: "compare", label: "Compare", Icon: CompareIcon, run: tool("compare"), on: page === "compare", tip: "What changed between two versions" },
         ],
       },
       {
@@ -384,10 +459,42 @@ export function Ribbon() {
         ],
       },
     ],
+    protect: [
+      {
+        label: "Redact",
+        items: [
+          { id: "redact-mark", label: "Mark area", Icon: RedactIcon, run: () => (setOwnTool("redact"), setPanel("redact")), on: isOwn("redact"), off: !reading, tip: "Drag over what must go" },
+          { id: "redact-find", label: "Find & redact", Icon: SearchIcon, run: () => setPanel("redact"), on: panel === "redact", off: !reading, tip: "Words, emails, phone and card numbers" },
+        ],
+      },
+      {
+        label: "Security",
+        items: [
+          { id: "protect", label: "Password & permissions", Icon: LockIcon, run: tool("protect"), big: true, on: page === "protect", tip: "Ask for a password to open; limit printing, copying, editing" },
+          { id: "clean", label: "Remove hidden info", Icon: EraserIcon, run: tool("protect"), tip: "Metadata, attached files, scripts, comments" },
+        ],
+      },
+    ],
     sign: [
       {
         label: "Fill & Sign",
         items: [{ id: "sign", label: "Fill & Sign", Icon: SignIcon, run: tool("sign"), big: true, on: page === "sign", tip: "Fill in forms, add text, dates, ticks and your signature" }],
+      },
+      {
+        label: "Digital signature",
+        items: [
+          {
+            id: "digisign",
+            label: "Sign with digital ID",
+            Icon: LockIcon,
+            run: () => (go("view"), setOwnTool("digisign")),
+            on: isOwn("digisign"),
+            big: true,
+            tip: "Draw the signature box, then sign with your certificate (proves the PDF wasn't changed)",
+          },
+          { id: "sig-panel", label: "Check signatures", Icon: CheckIcon, run: () => (go("view"), setPanel("signatures")), tip: "See who signed and whether anything changed since" },
+          { id: "ids", label: "Digital IDs", Icon: SignIcon, run: () => go("digitalids"), tip: "Create, import or back up the IDs you sign with" },
+        ],
       },
     ],
     convert: [
@@ -427,7 +534,7 @@ export function Ribbon() {
         </div>
       </div>
       <div className="ribbon-body" role="toolbar" aria-label={TABS.find((t) => t.id === chosen)?.label}>
-        {groups[chosen].map((g) => (
+        {groups[chosen].filter((g) => g.items.length || g.extra).map((g) => (
           <div className="ribbon-group" key={g.label}>
             <div className="ribbon-items">
               {g.items.map((b) => (

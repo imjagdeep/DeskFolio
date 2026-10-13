@@ -30,7 +30,7 @@ export function currentPage(): Page {
 }
 
 /** Pages that only make sense on the Home tab. */
-const HOME_ONLY: Page[] = ["home", "settings"];
+const HOME_ONLY: Page[] = ["home", "settings", "digitalids"];
 
 /**
  * Show a page. Home and Settings switch to the Home tab; everything else

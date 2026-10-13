@@ -61,7 +61,7 @@ describe("markup annotations", () => {
     expect(p2[1].line).toEqual([100, 100, 300, 100]);
     expect(p2[1].note).toBe("Look here");
     // The arrowhead needs room around the end point.
-    expect(p2[1].rect![2]).toBeGreaterThan(300);
+    expect(p2[1].rect?.[2]).toBeGreaterThan(300);
     for (const a of [...p1, ...p2]) {
       expect(a.hasAppearance).toBe(true);
       expect(a.pageRef).toBe(true);
@@ -106,5 +106,23 @@ describe("mergeLines", () => {
     const run = (x0: number, x1: number, top: number, bottom: number) => [x0, top, x1, top, x0, bottom, x1, bottom];
     const merged = mergeLines([run(100, 150, 720, 706), run(152, 220, 720.5, 706.4), run(100, 180, 700, 686)]);
     expect(merged).toEqual([run(100, 220, 720, 706), run(100, 180, 700, 686)]);
+  });
+});
+
+describe("links", () => {
+  it("adds web and page links, refuses unsafe addresses, and removes by point", async () => {
+    const { addLink, cleanUrl, removeLinksAt } = await import("./markup");
+    expect(cleanUrl("jaggi.cc/desklab")).toBe("https://jaggi.cc/desklab");
+    expect(cleanUrl("mailto:hi@example.com")).toBe("mailto:hi@example.com");
+    expect(cleanUrl("javascript:alert(1)")).toBeNull();
+    expect(cleanUrl("file:///C:/secret")).toBeNull();
+    let out = await addLink(await blank(2), 0, [100, 100, 200, 120], { url: "example.com" });
+    out = await addLink(out, 0, [100, 50, 200, 70], { page: 1 });
+    const a = await annots(out, 0);
+    expect(a.map((x) => x.subtype)).toEqual(["Link", "Link"]);
+    await expect(addLink(out, 0, [0, 0, 1, 1], { url: "javascript:alert(1)" })).rejects.toThrow("web address");
+    const r = await removeLinksAt(out, 0, 150, 110);
+    expect(r.removed).toBe(1);
+    expect((await annots(r.bytes, 0)).length).toBe(1);
   });
 });

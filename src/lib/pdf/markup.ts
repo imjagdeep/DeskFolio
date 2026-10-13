@@ -5,7 +5,7 @@
 // selected, moved or deleted in any of them. Positions arrive in PDF user
 // space (the UI converts from the screen with pdf.js).
 
-import { PDFHexString, PDFName, PDFString, StandardFonts, type PDFDocument, type PDFObject, type PDFRef } from "@cantoo/pdf-lib";
+import { PDFArray, PDFDict, PDFHexString, PDFName, PDFNumber, PDFRef, PDFString, StandardFonts, type PDFDocument, type PDFObject } from "@cantoo/pdf-lib";
 import { load, saveDoc, type LoadOpts } from "./ops";
 
 export type RGB = [number, number, number];
@@ -292,4 +292,74 @@ export function mergeLines(quads: number[][]): number[][] {
     } else out.push(q);
   }
   return out;
+}
+
+// ---------- links ----------
+
+export type LinkTarget = { url: string } | { page: number };
+
+/** Only web and mail links; anything else (file:, javascript:…) is refused. */
+export function cleanUrl(text: string): string | null {
+  const t = text.trim();
+  if (/^mailto:[^\s@]+@[^\s@]+$/i.test(t)) return t;
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(t) ? t : `https://${t}`;
+  try {
+    const u = new URL(withScheme);
+    return u.protocol === "https:" || u.protocol === "http:" ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Add a clickable area that opens a web address or goes to a page. */
+export async function addLink(bytes: Uint8Array, pageIndex: number, rect: [number, number, number, number], target: LinkTarget, opts: LoadOpts = {}): Promise<Uint8Array> {
+  const doc = await load(bytes, opts);
+  const pages = doc.getPages();
+  const page = pages[pageIndex];
+  if (!page) throw new Error(`There is no page ${pageIndex + 1}.`);
+  const ctx = doc.context;
+  const [x1, y1, x2, y2] = rect;
+  let action: PDFObject;
+  if ("url" in target) {
+    const url = cleanUrl(target.url);
+    if (!url) throw new Error("Use a web address (https://…) or an email (mailto:…).");
+    action = ctx.obj({ S: "URI", URI: PDFString.of(url) });
+  } else {
+    const dest = pages[target.page];
+    if (!dest) throw new Error(`There is no page ${target.page + 1}.`);
+    action = ctx.obj({ S: "GoTo", D: [dest.ref, "XYZ", null, null, null] });
+  }
+  const annot = ctx.obj({
+    Type: "Annot",
+    Subtype: "Link",
+    Rect: [Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)],
+    Border: [0, 0, 0],
+    F: 4,
+    P: page.ref,
+    A: action,
+  });
+  page.node.addAnnot(ctx.register(annot));
+  return saveDoc(doc);
+}
+
+/** Remove every link whose area contains the point (PDF user space); returns how many. */
+export async function removeLinksAt(bytes: Uint8Array, pageIndex: number, x: number, y: number, opts: LoadOpts = {}): Promise<{ bytes: Uint8Array; removed: number }> {
+  const doc = await load(bytes, opts);
+  const page = doc.getPages()[pageIndex];
+  if (!page) throw new Error(`There is no page ${pageIndex + 1}.`);
+  const annots = page.node.lookupMaybe(PDFName.of("Annots"), PDFArray);
+  if (!annots) return { bytes, removed: 0 };
+  const keep: PDFObject[] = [];
+  let removed = 0;
+  for (const ref of annots.asArray()) {
+    const a = ref instanceof PDFRef ? doc.context.lookup(ref) : ref;
+    const isLink = a instanceof PDFDict && a.lookupMaybe(PDFName.of("Subtype"), PDFName)?.decodeText() === "Link";
+    const r = a instanceof PDFDict ? a.lookupMaybe(PDFName.of("Rect"), PDFArray)?.asArray().map((v) => (v instanceof PDFNumber ? v.asNumber() : NaN)) : undefined;
+    const inside = !!r && r.length === 4 && x >= Math.min(r[0], r[2]) && x <= Math.max(r[0], r[2]) && y >= Math.min(r[1], r[3]) && y <= Math.max(r[1], r[3]);
+    if (isLink && inside) removed++;
+    else keep.push(ref);
+  }
+  if (!removed) return { bytes, removed: 0 };
+  page.node.set(PDFName.of("Annots"), doc.context.obj(keep));
+  return { bytes: await saveDoc(doc), removed };
 }
