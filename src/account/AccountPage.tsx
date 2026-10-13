@@ -62,8 +62,8 @@ function SignIn({ app, toast }: { app: string; toast: (text: string, error?: boo
     <div className="card account-card">
       <h2>Sign in to DeskLab</h2>
       <p className="muted small">
-        One DeskLab account for every DeskLab app. It lets your settings follow you to another computer, lets you send feedback, and
-        (coming soon) back up to an encrypted space only you can open. Without it, {app} works exactly the same and nothing leaves this
+        One optional DeskLab account for every DeskLab app. Today it lets DeskFolio send documents for signature; settings sync and an
+        encrypted backup only you can open are planned for later. Without it, {app} works exactly the same and nothing leaves this
         computer.
       </p>
 
