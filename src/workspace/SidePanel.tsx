@@ -1,5 +1,6 @@
-// The panel left of the document: page thumbnails, bookmarks (the PDF's
-// outline) and search, switched by the icon rail on its left edge.
+// The panel right of the document: page thumbnails, bookmarks (the PDF's
+// outline), comments, search, redaction, signatures, switched by the icon
+// rail on the window's right edge, which also holds page and zoom controls.
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowDownIcon, ArrowUpIcon, BookmarkIcon, CloseIcon, CommentsIcon, PagesIcon, RedactIcon, SearchIcon, SignIcon, type IconType } from "../components/Icons";
@@ -10,6 +11,7 @@ import { SignaturesPanel } from "./SignaturesPanel";
 import type { OpenDoc } from "../lib/doc";
 import { renderPage } from "../lib/pdfjs";
 import { setPanel, usePanel, type PanelId } from "./panels";
+import { PageControls } from "./StatusBar";
 import { closeFind, find, goToPage, useView } from "./viewer";
 
 const RAIL: { id: PanelId; label: string; Icon: IconType }[] = [
@@ -38,6 +40,8 @@ export function SidePanel({ doc }: { doc: OpenDoc }) {
             <r.Icon size={18} />
           </button>
         ))}
+        <span className="rail-grow" />
+        <PageControls />
       </nav>
       {panel && (
         <section className="side-body" aria-label={RAIL.find((r) => r.id === panel)?.label}>

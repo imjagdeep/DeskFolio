@@ -33,7 +33,6 @@ import { DocView } from "./DocView";
 import { Ribbon } from "./Ribbon";
 import { back, go, usePage } from "./route";
 import { SidePanel } from "./SidePanel";
-import { StatusBar } from "./StatusBar";
 import { goToPage, nextPage, useView } from "./viewer";
 
 function ToolPage({ page }: { page: Page }) {
@@ -137,15 +136,14 @@ export function Workspace() {
   }
 
   return (
-    <div className="workspace">
+    <div className={page === "view" ? "workspace ws-grid" : "workspace ws-grid on-task"}>
       <Ribbon />
       {page === "view" ? (
         <>
           <div className="work-area">
-            <SidePanel doc={doc} />
             <DocView doc={doc} />
+            <SidePanel doc={doc} />
           </div>
-          <StatusBar doc={doc} />
           <SignDialog />
         </>
       ) : (
