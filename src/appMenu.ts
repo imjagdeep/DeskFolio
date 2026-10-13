@@ -97,6 +97,7 @@ export function useAppMenus(page: Page, go: (p: Page) => void): MenuDef[] {
           },
         },
         "-",
+        { id: "account", label: "DeskLab account…", run: () => go("account") },
         { id: "settings", label: "Settings…", accel: "Mod+,", run: () => go("settings") },
         "-",
         { id: "exit", label: "Exit", run: async () => (await okToQuit()) && exit(0) },
@@ -172,7 +173,7 @@ export function useAppMenus(page: Page, go: (p: Page) => void): MenuDef[] {
 
     const tools: MenuDef = {
       label: "Tools",
-      items: PAGES.filter((p) => p.page !== "settings" && p.page !== "home" && p.page !== "view").map((p) => ({
+      items: PAGES.filter((p) => p.page !== "settings" && p.page !== "account" && p.page !== "home" && p.page !== "view").map((p) => ({
         id: `go-${p.page}`,
         label: p.label,
         checked: () => page === p.page,

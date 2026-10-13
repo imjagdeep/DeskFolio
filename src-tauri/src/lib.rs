@@ -1,6 +1,7 @@
 //! DeskFolio desktop shell: one window, file I/O for the web side (where the
 //! PDF work happens), updates.
 
+mod account;
 mod batch;
 mod compress;
 mod desklab;
@@ -88,6 +89,61 @@ fn digital_ids(app: AppHandle) -> CmdResult<(String, Vec<String>)> {
 #[tauri::command]
 fn digital_id_delete(app: AppHandle, name: String) -> CmdResult<()> {
     digitalid::delete(&ids_dir(&app)?, &name)
+}
+
+// ---------- the optional DeskLab account (all calls go through account.rs) ----------
+
+type Acct<'a> = State<'a, account::Account>;
+
+#[tauri::command]
+async fn account_status(acct: Acct<'_>) -> CmdResult<account::Status> {
+    acct.status().await.map_err(account::plain)
+}
+
+#[tauri::command]
+async fn account_send_code(acct: Acct<'_>, email: String) -> CmdResult<()> {
+    acct.send_code(&email).await.map_err(account::plain)
+}
+
+#[tauri::command]
+async fn account_verify(acct: Acct<'_>, email: String, code: String) -> CmdResult<()> {
+    acct.verify(&email, &code).await.map_err(account::plain)
+}
+
+#[tauri::command]
+async fn account_login(acct: Acct<'_>, email: String, password: String) -> CmdResult<()> {
+    acct.login(&email, &password).await.map_err(account::plain)
+}
+
+#[tauri::command]
+async fn account_logout(acct: Acct<'_>) -> CmdResult<()> {
+    acct.logout().await.map_err(account::plain)
+}
+
+#[tauri::command]
+async fn account_set_password(
+    acct: Acct<'_>,
+    password: String,
+    current: Option<String>,
+) -> CmdResult<()> {
+    acct.set_password(&password, current.as_deref())
+        .await
+        .map_err(account::plain)
+}
+
+#[tauri::command]
+async fn account_remove_password(acct: Acct<'_>) -> CmdResult<()> {
+    acct.remove_password().await.map_err(account::plain)
+}
+
+#[tauri::command]
+async fn account_sign_out_device(acct: Acct<'_>, id: String) -> CmdResult<()> {
+    acct.sign_out_device(&id).await.map_err(account::plain)
+}
+
+#[tauri::command]
+async fn account_delete(acct: Acct<'_>, confirm: String) -> CmdResult<()> {
+    acct.delete(&confirm).await.map_err(account::plain)
 }
 
 // ---------- batch processing ----------
@@ -305,12 +361,22 @@ pub fn run() {
         .setup(|app| {
             let args: Vec<String> = std::env::args().collect();
             app.manage(Startup(Mutex::new(files::paths_from_args(&args))));
+            app.manage(account::Account::new("deskfolio")?);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             app_info,
             read_file,
             batch_list_pdfs,
+            account_status,
+            account_send_code,
+            account_verify,
+            account_login,
+            account_logout,
+            account_set_password,
+            account_remove_password,
+            account_sign_out_device,
+            account_delete,
             batch_free_path,
             digital_id_import,
             digital_id_export,

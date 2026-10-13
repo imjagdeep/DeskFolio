@@ -23,6 +23,8 @@ import { Properties } from "../pages/Properties";
 import { Compare } from "../pages/Compare";
 import { Protect } from "../pages/Protect";
 import { Batch } from "../pages/Batch";
+import { AccountPage } from "../account/AccountPage";
+import { toast } from "../lib/store";
 import { DigitalIds } from "../pages/DigitalIds";
 import { SignDialog } from "./SignDialog";
 import { DocView } from "./DocView";
@@ -68,6 +70,8 @@ function ToolPage({ page }: { page: Page }) {
       return <DigitalIds />;
     case "batch":
       return <Batch />;
+    case "account":
+      return <AccountPage app="DeskFolio" toast={toast} />;
     case "view":
       return null;
   }
