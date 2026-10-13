@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts } from "@cantoo/pdf-lib";
+import { PDFDocument, PDFName, StandardFonts } from "@cantoo/pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
 import { createSelfSigned, importPrivateKey } from "./cms";
@@ -39,6 +39,13 @@ describe("PDF signatures", () => {
   it("keeps the first signature valid when a second person signs", async () => {
     const once = await signPdf(await sample(), { page: 0, rect: [40, 40, 200, 90], name: "First Signer" }, await signer("First Signer", "RSA"));
     const twice = await signPdf(once, { page: 0, rect: [210, 40, 370, 90], name: "Second Signer" }, await signer("Second Signer"));
+    // Signing again must not touch the signed page's content or resources
+    // (validators treat that as a change to the first signer's document).
+    const page = async (b: Uint8Array) => {
+      const p = (await PDFDocument.load(b)).getPage(0).node;
+      return [String(p.get(PDFName.of("Contents"))), String(p.get(PDFName.of("Resources")))];
+    };
+    expect(await page(twice)).toEqual(await page(once));
     const sigs = await readSignatures(twice);
     expect(sigs.map((s) => [s.field, s.signer?.name, s.intact, s.wholeFile])).toEqual([
       ["Signature1", "First Signer", true, false],
