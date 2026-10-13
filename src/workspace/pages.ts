@@ -8,6 +8,7 @@ export type Page =
   | "merge"
   | "split"
   | "compress"
+  | "batch"
   | "sign"
   | "convert"
   | "ocr"
@@ -34,6 +35,7 @@ export const PAGES: { page: Page; label: string; needsDoc?: boolean }[] = [
   { page: "merge", label: "Merge" },
   { page: "split", label: "Split" },
   { page: "compress", label: "Compress" },
+  { page: "batch", label: "Batch" },
   { page: "convert", label: "Convert" },
   { page: "ocr", label: "Recognise text (OCR)" },
   { page: "digitalids", label: "Digital IDs" },

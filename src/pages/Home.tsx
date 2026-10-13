@@ -1,4 +1,5 @@
 import {
+  BatchIcon,
   CompressIcon,
   ConvertIcon,
   DropIcon,
@@ -23,6 +24,7 @@ const TILES: Tile[] = [
   { page: "compress", title: "Compress", text: "Make a PDF smaller", Icon: CompressIcon },
   { page: "convert", title: "Convert", text: "To and from Word, Excel, images", Icon: ConvertIcon },
   { page: "ocr", title: "Recognise text", text: "Make scans searchable (OCR)", Icon: OcrIcon },
+  { page: "batch", title: "Batch", text: "Same steps on many PDFs", Icon: BatchIcon },
 ];
 
 /** The Home tab: open files, start a tool, pick up where you left off. */

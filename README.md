@@ -18,6 +18,7 @@
 | **Merge** | Join several PDFs, with optional page ranges per file |
 | **Split** | By page ranges, every N pages, or one file per page |
 | **Compress** | Light, Balanced or Strong: photos are re-saved smaller, text and drawings stay sharp; never makes a file bigger |
+| **Batch** | Run the same steps on many PDFs or a whole folder: recognise text, watermark, page numbers or Bates numbers (continuing across files), remove hidden information, compress, password, or save as Word/Excel/text; originals are never changed |
 | **Fill & Sign** | Type into PDF forms (optionally lock them afterwards); add text, dates, check marks and your signature (drawn, typed or from an image, kept on your computer) |
 | **Digital signatures** | Sign with a certificate (PAdES, SHA-256): make your own digital ID or import a .pfx/.p12, draw the signature box, sign; see who signed a PDF and whether it changed since |
 | **Protect** | Open password (AES-256) and permissions, remove protection, remove hidden information, redact text, areas and found details (emails, phone numbers, card numbers) for good |
