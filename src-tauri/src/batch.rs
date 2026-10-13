@@ -40,7 +40,9 @@ pub fn list_pdfs(dir: &Path, recursive: bool) -> Result<Vec<PathBuf>, String> {
                 continue;
             }
             let path = entry.path();
-            let Ok(kind) = entry.file_type() else { continue };
+            let Ok(kind) = entry.file_type() else {
+                continue;
+            };
             if kind.is_dir() {
                 if recursive {
                     sub.push(path);
@@ -65,9 +67,17 @@ pub fn free_path(path: &Path) -> Result<PathBuf, String> {
     if !path.exists() {
         return Ok(path.to_path_buf());
     }
-    let dir = path.parent().ok_or_else(|| format!("{} has no folder", path.display()))?;
-    let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
-    let ext = path.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default();
+    let dir = path
+        .parent()
+        .ok_or_else(|| format!("{} has no folder", path.display()))?;
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let ext = path
+        .extension()
+        .map(|e| format!(".{}", e.to_string_lossy()))
+        .unwrap_or_default();
     for n in 2..10_000 {
         let candidate = dir.join(format!("{stem} ({n}){ext}"));
         if !candidate.exists() {
@@ -87,12 +97,31 @@ mod tests {
         let d = tmp.path();
         fs::create_dir(d.join("sub")).unwrap();
         fs::create_dir(d.join(".hidden")).unwrap();
-        for f in ["b.pdf", "a.PDF", "notes.txt", "~$lock.pdf", "sub/c.pdf", ".hidden/x.pdf"] {
+        for f in [
+            "b.pdf",
+            "a.PDF",
+            "notes.txt",
+            "~$lock.pdf",
+            "sub/c.pdf",
+            ".hidden/x.pdf",
+        ] {
             fs::write(d.join(f), b"x").unwrap();
         }
-        let names = |v: Vec<PathBuf>| v.iter().map(|p| p.strip_prefix(d).unwrap().to_string_lossy().replace('\\', "/")).collect::<Vec<_>>();
+        let names = |v: Vec<PathBuf>| {
+            v.iter()
+                .map(|p| {
+                    p.strip_prefix(d)
+                        .unwrap()
+                        .to_string_lossy()
+                        .replace('\\', "/")
+                })
+                .collect::<Vec<_>>()
+        };
         assert_eq!(names(list_pdfs(d, false).unwrap()), ["a.PDF", "b.pdf"]);
-        assert_eq!(names(list_pdfs(d, true).unwrap()), ["a.PDF", "b.pdf", "sub/c.pdf"]);
+        assert_eq!(
+            names(list_pdfs(d, true).unwrap()),
+            ["a.PDF", "b.pdf", "sub/c.pdf"]
+        );
         assert!(list_pdfs(&d.join("missing"), false).is_err());
     }
 
@@ -102,8 +131,14 @@ mod tests {
         let p = tmp.path().join("report (batch).pdf");
         assert_eq!(free_path(&p).unwrap(), p);
         fs::write(&p, b"x").unwrap();
-        assert_eq!(free_path(&p).unwrap(), tmp.path().join("report (batch) (2).pdf"));
+        assert_eq!(
+            free_path(&p).unwrap(),
+            tmp.path().join("report (batch) (2).pdf")
+        );
         fs::write(tmp.path().join("report (batch) (2).pdf"), b"x").unwrap();
-        assert_eq!(free_path(&p).unwrap(), tmp.path().join("report (batch) (3).pdf"));
+        assert_eq!(
+            free_path(&p).unwrap(),
+            tmp.path().join("report (batch) (3).pdf")
+        );
     }
 }
