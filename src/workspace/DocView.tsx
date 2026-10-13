@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import type { OpenDoc } from "../lib/doc";
 import { useMarkup } from "./markup";
 import { MarkupLayer } from "./MarkupLayer";
+import { RedactLayer } from "./RedactLayer";
 import { mountViewer, useView } from "./viewer";
 
 export function DocView({ doc }: { doc: OpenDoc }) {
@@ -29,6 +30,7 @@ export function DocView({ doc }: { doc: OpenDoc }) {
         <div ref={inner} className="pdfViewer" />
       </div>
       <MarkupLayer container={container} />
+      <RedactLayer />
     </div>
   );
 }

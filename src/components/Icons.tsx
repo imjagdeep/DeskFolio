@@ -461,3 +461,26 @@ export const CompareIcon = (p: IconProps) => (
     <path d="M5.5 9h3M15.5 9h3M5.5 12h3M15.5 12h2" />
   </Svg>
 );
+
+// ---------- protect ----------
+
+export const RedactIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 7h7M15 7h5M4 12h3M4 17h9M17 17h3" />
+    <rect x="8.5" y="10" width="11.5" height="4.5" rx="0.8" fill="currentColor" stroke="none" />
+  </Svg>
+);
+
+export const LockIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="5" y="10.5" width="14" height="10" rx="2" />
+    <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+  </Svg>
+);
+
+export const EraserIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m14.5 4.5 5 5L11 18H6.5l-2.5-2.5z" />
+    <path d="M9 9.5l5 5M11 18h9" />
+  </Svg>
+);

@@ -21,6 +21,7 @@ import { HeaderFooter } from "../pages/HeaderFooter";
 import { Crop } from "../pages/Crop";
 import { Properties } from "../pages/Properties";
 import { Compare } from "../pages/Compare";
+import { Protect } from "../pages/Protect";
 import { DocView } from "./DocView";
 import { Ribbon } from "./Ribbon";
 import { back, go, usePage } from "./route";
@@ -56,6 +57,8 @@ function ToolPage({ page }: { page: Page }) {
       return <Properties />;
     case "compare":
       return <Compare />;
+    case "protect":
+      return <Protect />;
     case "settings":
       return <SettingsPage />;
     case "view":

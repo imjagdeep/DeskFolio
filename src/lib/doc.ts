@@ -9,6 +9,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { useSyncExternalStore } from "react";
 import { api } from "./api";
 import { fileName, siblingPath } from "./format";
+import { decrypt, encrypt, type Protection } from "./pdf/protect";
 import { closePdf, loadPdf, PasswordNeeded, type PDFDocumentProxy } from "./pdfjs";
 import { createStore, toast, toastError } from "./store";
 
@@ -20,8 +21,13 @@ export interface OpenDoc {
   bytes: Uint8Array;
   pdf: PDFDocumentProxy;
   pages: number;
-  /** Set when the file needed one; edits re-open with it. */
+  /** Set when the bytes still need a password to open (only if they couldn't be decrypted on open). */
   password?: string;
+  /**
+   * The file's password and permissions. The bytes in memory are decrypted
+   * on open; this protection is put back on whenever the file is saved.
+   */
+  protection: Protection | null;
   /** Changed since it was opened or last saved. */
   dirty: boolean;
   /** Short descriptions of the edits, newest last. */
@@ -186,18 +192,38 @@ export async function openPath(path: string): Promise<boolean> {
       activate(same.id);
       return true;
     }
-    const bytes = await api.readFile(path);
+    const raw = await api.readFile(path);
     const name = fileName(path);
-    const loaded = await loadWithPassword(bytes, name);
+    const loaded = await loadWithPassword(raw, name);
     if (!loaded) return false;
+    // Decrypt once; every tool then works on plain bytes, and saving puts the protection back.
+    let bytes: Uint8Array = raw;
+    let pdf = loaded.pdf;
+    let password = loaded.password;
+    let protection: Protection | null = null;
+    try {
+      const plain = await decrypt(raw, loaded.password ?? "");
+      if (plain.protection) {
+        bytes = plain.bytes;
+        protection = plain.protection;
+        closePdf(pdf);
+        pdf = await loadPdf(bytes);
+        password = undefined;
+      }
+    } catch {
+      // An encryption pdf-lib can't undo: the file still opens for reading,
+      // tools that change it may refuse it.
+      toast(`${name} uses a kind of protection DeskFolio can show but not change.`, true);
+    }
     const doc: OpenDoc = {
       id: nextId++,
       path,
       name,
       bytes,
-      pdf: loaded.pdf,
-      pages: loaded.pdf.numPages,
-      password: loaded.password,
+      pdf,
+      pages: pdf.numPages,
+      password,
+      protection,
       dirty: false,
       edits: [],
       rev: 1,
@@ -334,6 +360,18 @@ export async function undo(): Promise<void> {
 
 // ---------- saving ----------
 
+/** What goes to disk: the document with its protection put back on. */
+async function bytesToSave(d: OpenDoc): Promise<Uint8Array> {
+  return d.protection ? encrypt(d.bytes, d.protection) : d.bytes;
+}
+
+/** Protect tool: set, change or remove (null) the document's protection. */
+export function setProtection(p: Protection | null, what: string) {
+  const d = docStore.get();
+  if (!d) return;
+  putDoc({ ...d, protection: p, dirty: true, edits: [...d.edits, what], rev: d.rev });
+}
+
 /** Ask where to save; defaults to "name (edited).pdf" next to the original. */
 export async function pickSavePath(defaultPath: string, kind = "PDF", ext = "pdf"): Promise<string | null> {
   const p = await save({ defaultPath, filters: [{ name: kind, extensions: [ext] }] });
@@ -347,7 +385,7 @@ export async function saveAs(): Promise<string | null> {
   try {
     const target = await pickSavePath(siblingPath(d.path, "edited"));
     if (!target) return null;
-    await api.writeFile(target, d.bytes);
+    await api.writeFile(target, await bytesToSave(d));
     putDoc({ ...d, path: target, name: fileName(target), dirty: false });
     remember(target);
     toast(`Saved ${fileName(target)}`);
@@ -372,7 +410,7 @@ export async function saveOver(): Promise<boolean> {
       cancelLabel: "Cancel",
     });
     if (!ok) return false;
-    await api.writeFile(d.path, d.bytes);
+    await api.writeFile(d.path, await bytesToSave(d));
     putDoc({ ...d, dirty: false });
     toast(`Saved ${d.name}`);
     return true;

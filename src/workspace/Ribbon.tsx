@@ -5,6 +5,9 @@
 import { useState } from "react";
 import {
   ActualSizeIcon,
+  EraserIcon,
+  LockIcon,
+  RedactIcon,
   BlankPageIcon,
   CropIcon,
   HeaderFooterIcon,
@@ -102,11 +105,12 @@ interface Group {
   /** Controls that aren't buttons (colours, sizes). */
   extra?: React.ReactNode;
 }
-type RibbonTab = "view" | "comment" | "pages" | "sign" | "convert";
+type RibbonTab = "view" | "comment" | "pages" | "protect" | "sign" | "convert";
 const TABS: { id: RibbonTab; label: string }[] = [
   { id: "view", label: "View" },
   { id: "comment", label: "Comment" },
   { id: "pages", label: "Pages" },
+  { id: "protect", label: "Protect" },
   { id: "sign", label: "Fill & Sign" },
   { id: "convert", label: "Convert" },
 ];
@@ -119,6 +123,7 @@ const TAB_OF: Partial<Record<Page, RibbonTab>> = {
   crop: "pages",
   properties: "pages",
   compare: "pages",
+  protect: "protect",
   split: "pages",
   merge: "pages",
   compress: "pages",
@@ -426,6 +431,22 @@ export function Ribbon() {
           { id: "split", label: "Split", Icon: SplitIcon, run: tool("split"), big: true, on: page === "split", tip: "Split into several PDFs" },
           { id: "merge", label: "Merge", Icon: MergeIcon, run: tool("merge"), big: true, on: page === "merge", tip: "Join this PDF with others" },
           { id: "compress", label: "Compress", Icon: CompressIcon, run: tool("compress"), big: true, on: page === "compress", tip: "Make the file smaller" },
+        ],
+      },
+    ],
+    protect: [
+      {
+        label: "Redact",
+        items: [
+          { id: "redact-mark", label: "Mark area", Icon: RedactIcon, run: () => (setOwnTool("redact"), setPanel("redact")), on: isOwn("redact"), off: !reading, tip: "Drag over what must go" },
+          { id: "redact-find", label: "Find & redact", Icon: SearchIcon, run: () => setPanel("redact"), on: panel === "redact", off: !reading, tip: "Words, emails, phone and card numbers" },
+        ],
+      },
+      {
+        label: "Security",
+        items: [
+          { id: "protect", label: "Password & permissions", Icon: LockIcon, run: tool("protect"), big: true, on: page === "protect", tip: "Ask for a password to open; limit printing, copying, editing" },
+          { id: "clean", label: "Remove hidden info", Icon: EraserIcon, run: tool("protect"), tip: "Metadata, attached files, scripts, comments" },
         ],
       },
     ],

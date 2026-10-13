@@ -217,3 +217,29 @@
 .compare-summary { display: flex; flex-direction: column; gap: 6px; }
 .compare-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
 .compare-text { margin: 0; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+
+/* ---------- protect & redact ---------- */
+.perm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0 16px; margin: 4px 0 8px; }
+.status-lock { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 1px 7px; border-radius: 9px; background: var(--accent-soft); color: var(--text); font-size: 11px; }
+.redact-box { position: absolute; z-index: 25; background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1.5px #e53935; border-radius: 1px; }
+.redact-x { position: absolute; top: -9px; right: -9px; width: 18px; height: 18px; min-width: 0; padding: 0; border-radius: 50%; background: #e53935; color: #fff; font-size: 13px; line-height: 1; box-shadow: none; display: none; }
+.redact-box:hover .redact-x { display: grid; place-items: center; }
+.redact-draft { fill: rgba(0, 0, 0, 0.45); stroke: #e53935; stroke-width: 1.5; }
+.redact-panel { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; padding: 0 10px 10px; }
+.redact-mark { height: 30px; }
+.redact-mark.on { background: color-mix(in srgb, #e53935 18%, transparent); box-shadow: inset 0 0 0 1px #e53935; }
+.redact-find { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 8px; background: var(--window); box-shadow: 0 0 0 0.5px var(--group-border); }
+.redact-find input[type="text"], .redact-find > input { height: 28px; margin-bottom: 4px; }
+.redact-find .check-row { margin: 2px 0; font-size: 12px; }
+.redact-find > button { margin-top: 6px; height: 28px; }
+.redact-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.redact-row { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 4px; border-radius: 6px; }
+.redact-row:hover { background: var(--hover); }
+.redact-row .ellipsis { flex: 1; min-width: 0; }
+.redact-row .link { padding: 0; height: auto; flex: none; }
+.redact-row .icon { width: 22px; height: 22px; padding: 0; }
+.redact-foot { border-top: 0.5px solid var(--sep); padding-top: 8px; }
+.redact-foot .check-row { font-size: 12px; margin: 0 0 8px; }
+.redact-actions { display: flex; justify-content: flex-end; gap: 6px; }
+button.danger-fill { background: #d32f2f; color: #fff; }
+button.danger-fill:hover:not(:disabled) { background: #b71c1c; filter: none; }

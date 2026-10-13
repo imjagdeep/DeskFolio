@@ -3,14 +3,14 @@
 import { useSyncExternalStore } from "react";
 import { createStore } from "../lib/store";
 
-export type PanelId = "pages" | "outline" | "comments" | "search";
+export type PanelId = "pages" | "outline" | "comments" | "search" | "redact";
 const KEY = "deskfolio-panel";
 
 function read(): PanelId | null {
   try {
     const v = localStorage.getItem(KEY);
     if (v === "none") return null;
-    return v === "outline" || v === "search" || v === "comments" ? v : "pages";
+    return v === "outline" || v === "search" || v === "comments" || v === "redact" ? v : "pages";
   } catch {
     // Storage unavailable: show page thumbnails.
     return "pages";

@@ -1,7 +1,7 @@
 // The bar under the document: page x of y, zoom, fit buttons, reading mode.
 
 import { useEffect, useState } from "react";
-import { ChevronLeftIcon, ChevronRightIcon, FitPageIcon, FitWidthIcon, MoonIcon, ZoomInIcon, ZoomOutIcon } from "../components/Icons";
+import { ChevronLeftIcon, ChevronRightIcon, FitPageIcon, LockIcon, FitWidthIcon, MoonIcon, ZoomInIcon, ZoomOutIcon } from "../components/Icons";
 import type { OpenDoc } from "../lib/doc";
 import { goToPage, nextPage, setDark, setScale, useView, zoom } from "./viewer";
 
@@ -31,6 +31,11 @@ export function StatusBar({ doc }: { doc: OpenDoc }) {
       <div className="status-left ellipsis" title={doc.path}>
         {doc.dirty ? <span className="status-dot" title="Unsaved changes" /> : null}
         {doc.dirty ? `Edited · ${doc.edits.length} change${doc.edits.length === 1 ? "" : "s"}` : "No changes"}
+        {doc.protection && (
+          <span className="status-lock" title={doc.protection.openPassword ? "Opens with a password (kept when you save)" : "Has permission limits (kept when you save)"}>
+            <LockIcon size={12} /> {doc.protection.openPassword ? "Password" : "Limited"}
+          </span>
+        )}
       </div>
       <div className="status-mid">
         <button className="icon" title="Previous page" aria-label="Previous page" disabled={view.page <= 1} onClick={() => nextPage(-1)}>

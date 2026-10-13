@@ -364,3 +364,12 @@ export function pageScale(pageIndex: number): number {
   const view: PDFPageView | undefined = viewer?.getPageView(pageIndex);
   return view?.viewport.scale ?? 1;
 }
+
+/** A PDF user-space rectangle → CSS box inside its page element (left, top, width, height). */
+export function toCssRect(pageIndex: number, rect: [number, number, number, number]): [number, number, number, number] | null {
+  const view: PDFPageView | undefined = viewer?.getPageView(pageIndex);
+  if (!view) return null;
+  const [x1, y1]: number[] = view.viewport.convertToViewportPoint(rect[0], rect[1]);
+  const [x2, y2]: number[] = view.viewport.convertToViewportPoint(rect[2], rect[3]);
+  return [Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)];
+}
