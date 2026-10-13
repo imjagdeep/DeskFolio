@@ -7,7 +7,7 @@ export interface AppInfo {
   platform: string;
 }
 
-export type LabToolId = "deskzero" | "deskmedic" | "deskfolio";
+export type LabToolId = "deskzero" | "deskmedic" | "deskfolio" | "deskshot";
 export interface LabTool {
   id: LabToolId;
   installed: boolean;
