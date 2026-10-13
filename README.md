@@ -21,6 +21,7 @@
 | **Batch** | Run the same steps on many PDFs or a whole folder: recognise text, watermark, page numbers or Bates numbers (continuing across files), remove hidden information, compress, password, or save as Word/Excel/text; originals are never changed |
 | **Fill & Sign** | Type into PDF forms (optionally lock them afterwards); add text, dates, check marks and your signature (drawn, typed or from an image, kept on your computer) |
 | **Digital signatures** | Sign with a certificate (PAdES, SHA-256): make your own digital ID or import a .pfx/.p12, draw the signature box, sign; see who signed a PDF and whether it changed since |
+| **Send for signature** | Send a PDF to people who sign in their browser (no install): place signature, initials, date, name, text and tick fields for each person, in order or all at once, with reminders; follow it in Agreements and get the signed copy with a certificate of completion. Needs a free DeskLab account. The PDF is encrypted on your computer; the key is kept there and in the signing links, never stored on the server |
 | **Protect** | Open password (AES-256) and permissions, remove protection, remove hidden information, redact text, areas and found details (emails, phone numbers, card numbers) for good |
 | **Convert** | PDF to Word (headings, paragraphs, simple tables), Excel (tables, real numbers), text or PNG/JPG pages; pictures to PDF; Word/Excel/PowerPoint to PDF using Microsoft Office or LibreOffice if installed |
 | **OCR** | Make scanned PDFs searchable: the pages look the same, but their text can be found, selected and copied (English built in, offline) |
@@ -30,7 +31,7 @@ Every change can be undone while the file is open, and nothing is written to dis
 ## Honest limits
 
 - Digital signatures have no trusted timestamp yet (the time shown is the signer's own clock), and the certificate chain isn't checked against a trust list: DeskFolio trusts your own IDs and those you mark as trusted. A self-made ID shows as "not verified" in other readers until they choose to trust it; a green check everywhere needs an ID from a provider on Adobe's trusted list. Password-protected PDFs can't be signed yet.
-- Sending a PDF to other people to sign is planned, not built.
+- Send for signature uses DeskLab's server (getdesklab.com) to deliver links and keep the signing record; documents are encrypted before upload and their files are deleted 30 days after a request ends. Signatures are simple electronic signatures with an audit trail, not certificate signatures; they don't suit documents that need witnesses, a notary or a qualified signature.
 - Drawn and typed signatures (Fill & Sign) are visual, like signing on paper.
 - Added text uses a built-in Latin font for now; other scripts get a clear message instead of broken text.
 - Compress only re-saves ordinary photos (RGB or greyscale); other image kinds are left exactly as they are.

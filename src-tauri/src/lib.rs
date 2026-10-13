@@ -146,6 +146,74 @@ async fn account_delete(acct: Acct<'_>, confirm: String) -> CmdResult<()> {
     acct.delete(&confirm).await.map_err(account::plain)
 }
 
+// ---------- DeskLab Sign: requests for signature (through the account) ----------
+
+/// Only the sender's request endpoints; the account is never used for anything else here.
+fn sign_path(path: &str) -> CmdResult<()> {
+    let ok = (path == "/v1/envelopes" || path.starts_with("/v1/envelopes/"))
+        && path.len() < 200
+        && !path.contains("..")
+        && path
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"/-_".contains(&b));
+    if ok {
+        Ok(())
+    } else {
+        Err("not a DeskLab Sign address".into())
+    }
+}
+
+#[tauri::command]
+async fn sign_call(
+    acct: Acct<'_>,
+    method: String,
+    path: String,
+    body: Option<serde_json::Value>,
+) -> CmdResult<serde_json::Value> {
+    sign_path(&path)?;
+    let m = match method.as_str() {
+        "GET" => reqwest::Method::GET,
+        "POST" => reqwest::Method::POST,
+        "DELETE" => reqwest::Method::DELETE,
+        _ => return Err("unsupported method".into()),
+    };
+    let text = acct.call(m, &path, body).await.map_err(account::plain)?;
+    if text.trim().is_empty() {
+        return Ok(serde_json::Value::Null);
+    }
+    serde_json::from_str(&text).map_err(|e| format!("unexpected answer from DeskLab: {e}"))
+}
+
+/// Upload an encrypted file: raw body, the API path in a header.
+#[tauri::command]
+async fn sign_upload(acct: Acct<'_>, request: Request<'_>) -> CmdResult<()> {
+    let path = request
+        .headers()
+        .get("x-path")
+        .and_then(|v| v.to_str().ok())
+        .map(percent_decode)
+        .ok_or("no path")?;
+    sign_path(&path)?;
+    let InvokeBody::Raw(data) = request.body() else {
+        return Err("expected raw bytes".into());
+    };
+    acct.raw(reqwest::Method::PUT, &path, Some(data.clone()))
+        .await
+        .map_err(account::plain)?;
+    Ok(())
+}
+
+/// Download an encrypted file, as raw bytes.
+#[tauri::command]
+async fn sign_download(acct: Acct<'_>, path: String) -> CmdResult<Response> {
+    sign_path(&path)?;
+    let bytes = acct
+        .raw(reqwest::Method::GET, &path, None)
+        .await
+        .map_err(account::plain)?;
+    Ok(Response::new(bytes))
+}
+
 // ---------- batch processing ----------
 
 /// The PDFs in a folder (and its subfolders when asked), sorted.
@@ -377,6 +445,9 @@ pub fn run() {
             account_remove_password,
             account_sign_out_device,
             account_delete,
+            sign_call,
+            sign_upload,
+            sign_download,
             batch_free_path,
             digital_id_import,
             digital_id_export,
@@ -411,7 +482,18 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::percent_decode;
+    use super::{percent_decode, sign_path};
+
+    #[test]
+    fn sign_calls_only_reach_request_endpoints() {
+        assert!(sign_path("/v1/envelopes").is_ok());
+        assert!(sign_path("/v1/envelopes/0b1c-22/files/document").is_ok());
+        assert!(sign_path("/v1/me").is_err());
+        assert!(sign_path("/v1/envelopesX").is_err());
+        assert!(sign_path("/v1/envelopes/../me").is_err());
+        assert!(sign_path("/v1/envelopes/a?x=1").is_err());
+        assert!(sign_path("https://evil.example/v1/envelopes").is_err());
+    }
 
     #[test]
     fn decodes_paths_from_the_header() {

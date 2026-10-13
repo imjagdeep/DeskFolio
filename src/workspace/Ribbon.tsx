@@ -47,6 +47,8 @@ import {
   SaveIcon,
   ScrollIcon,
   SearchIcon,
+  SendIcon,
+  InboxIcon,
   SignIcon,
   SinglePageIcon,
   SplitIcon,
@@ -479,6 +481,13 @@ export function Ribbon() {
       {
         label: "Fill & Sign",
         items: [{ id: "sign", label: "Fill & Sign", Icon: SignIcon, run: tool("sign"), big: true, on: page === "sign", tip: "Fill in forms, add text, dates, ticks and your signature" }],
+      },
+      {
+        label: "Send for signature",
+        items: [
+          { id: "request", label: "Request signatures", Icon: SendIcon, run: tool("request"), big: true, on: page === "request", tip: "Send this PDF to people to sign in their browser" },
+          { id: "agreements", label: "Agreements", Icon: InboxIcon, run: () => go("agreements"), tip: "Documents you sent: who signed, the signed copies" },
+        ],
       },
       {
         label: "Digital signature",

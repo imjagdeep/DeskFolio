@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 use tauri::async_runtime::Mutex;
 
-pub const API: &str = "https://desklab-api.jaggi.cc";
+pub const API: &str = "https://api.getdesklab.com";
 const SERVICE: &str = "DeskLab";
 const OFFLINE: &str = "Couldn't reach DeskLab. Check your internet connection and try again.";
 
@@ -225,6 +225,66 @@ impl Account {
                 Err(e)
             }
             Err(e) => Err(e),
+        }
+    }
+
+    /// Raw bytes in and out (encrypted DeskLab Sign files).
+    async fn send_raw(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        body: Option<Vec<u8>>,
+        token: &str,
+    ) -> Result<Vec<u8>, String> {
+        let mut req = self
+            .client
+            .request(method, format!("{API}{path}"))
+            .bearer_auth(token);
+        if let Some(b) = body {
+            req = req
+                .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+                .body(b);
+        }
+        let res = req.send().await.map_err(|_| OFFLINE.to_string())?;
+        let status = res.status().as_u16();
+        let bytes = res.bytes().await.map_err(|_| OFFLINE.to_string())?;
+        if (200..300).contains(&status) {
+            Ok(bytes.to_vec())
+        } else {
+            Err(format!(
+                "{status}:{}",
+                api_error(status, &String::from_utf8_lossy(&bytes))
+            ))
+        }
+    }
+
+    /// Signed-in calls for other features (DeskLab Sign): JSON, upload,
+    /// download. The caller decides which paths are allowed.
+    pub async fn call(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        body: Option<serde_json::Value>,
+    ) -> Result<String, String> {
+        self.authed(method, path, body).await
+    }
+
+    pub async fn raw(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        body: Option<Vec<u8>>,
+    ) -> Result<Vec<u8>, String> {
+        let t = self.token(false).await?;
+        match self
+            .send_raw(method.clone(), path, body.clone(), &t)
+            .await
+        {
+            Err(e) if e.starts_with("401:") => {
+                let t = self.token(true).await?;
+                self.send_raw(method, path, body, &t).await
+            }
+            other => other,
         }
     }
 

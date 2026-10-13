@@ -71,6 +71,20 @@ export const CompressIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const SendIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M21 3 10.5 13.5" />
+    <path d="M21 3 14.5 21l-4-7.5L3 9.5z" />
+  </Svg>
+);
+
+export const InboxIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 13h5l1.5 3h5l1.5-3h5" />
+    <path d="M5 5h14l2 8v6H3v-6z" />
+  </Svg>
+);
+
 export const BatchIcon = (p: IconProps) => (
   <Svg {...p}>
     <rect x="7" y="3" width="12" height="15" rx="1.5" />

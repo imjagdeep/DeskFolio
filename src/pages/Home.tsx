@@ -1,5 +1,6 @@
 import {
   BatchIcon,
+  InboxIcon,
   CompressIcon,
   ConvertIcon,
   DropIcon,
@@ -25,6 +26,7 @@ const TILES: Tile[] = [
   { page: "convert", title: "Convert", text: "To and from Word, Excel, images", Icon: ConvertIcon },
   { page: "ocr", title: "Recognise text", text: "Make scans searchable (OCR)", Icon: OcrIcon },
   { page: "batch", title: "Batch", text: "Same steps on many PDFs", Icon: BatchIcon },
+  { page: "agreements", title: "Agreements", text: "Sent for signature: status, signed copies", Icon: InboxIcon },
 ];
 
 /** The Home tab: open files, start a tool, pick up where you left off. */

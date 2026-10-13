@@ -19,6 +19,8 @@ export type Page =
   | "compare"
   | "protect"
   | "digitalids"
+  | "request"
+  | "agreements"
   | "account"
   | "settings";
 
@@ -39,6 +41,8 @@ export const PAGES: { page: Page; label: string; needsDoc?: boolean }[] = [
   { page: "batch", label: "Batch" },
   { page: "convert", label: "Convert" },
   { page: "ocr", label: "Recognise text (OCR)" },
+  { page: "request", label: "Request signatures", needsDoc: true },
+  { page: "agreements", label: "Agreements" },
   { page: "digitalids", label: "Digital IDs" },
   { page: "account", label: "DeskLab account" },
   { page: "settings", label: "Settings" },
