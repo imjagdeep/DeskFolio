@@ -5,10 +5,16 @@
 import { useState } from "react";
 import {
   ActualSizeIcon,
+  BlankPageIcon,
+  CropIcon,
+  HeaderFooterIcon,
+  InfoIcon,
+  WatermarkIcon,
   ArrowIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  CompareIcon,
   CompressIcon,
   ConvertIcon,
   CursorIcon,
@@ -26,6 +32,7 @@ import {
   OcrIcon,
   OrganizeIcon,
   PanelLeftIcon,
+  PrintIcon,
   PenIcon,
   RectIcon,
   RedoIcon,
@@ -48,12 +55,15 @@ import {
   ZoomOutIcon,
   type IconType,
 } from "../components/Icons";
-import { canUndo, saveAs, saveOver, undo, useDoc } from "../lib/doc";
+import { applyEdit, canUndo, currentDoc, saveAs, saveOver, undo, useDoc } from "../lib/doc";
+import { insertBlank } from "../lib/pdf/pagetools";
+import { toastError } from "../lib/store";
 import { STAMPS } from "../lib/pdf/markup";
 import { toggleFullscreen } from "../shell/shell";
 import { clearOwnTool, HEX_RGB, RGB_HEX, setMarkup, setOwnTool, useMarkup, type OwnTool } from "./markup";
 import type { Page } from "./pages";
 import { setPanel, usePanel } from "./panels";
+import { printDocument } from "./print";
 import { go, usePage } from "./route";
 import {
   commitMarks,
@@ -72,6 +82,7 @@ import {
   setSpread,
   SPREAD,
   useView,
+  viewPage,
   zoom,
 } from "./viewer";
 
@@ -103,6 +114,11 @@ const TABS: { id: RibbonTab; label: string }[] = [
 /** Which ribbon tab belongs to a tool page (so the right one is shown). */
 const TAB_OF: Partial<Record<Page, RibbonTab>> = {
   organize: "pages",
+  watermark: "pages",
+  headerfooter: "pages",
+  crop: "pages",
+  properties: "pages",
+  compare: "pages",
   split: "pages",
   merge: "pages",
   compress: "pages",
@@ -119,6 +135,18 @@ const HIGHLIGHTS = HIGHLIGHT_COLORS.split(",").map((p) => {
 });
 const WIDTHS = [1, 2, 3, 5, 8];
 const TEXT_SIZES = [8, 10, 12, 14, 18, 24, 32];
+
+/** Insert a blank page after the page on screen. */
+async function addBlank() {
+  const d = currentDoc();
+  if (!d) return;
+  try {
+    const at = Math.min(d.pages, viewPage());
+    await applyEdit(await insertBlank(d.bytes, at, 1, { password: d.password }), `Blank page after page ${at}`);
+  } catch (e) {
+    toastError(e);
+  }
+}
 
 export function Ribbon() {
   const doc = useDoc();
@@ -297,6 +325,7 @@ export function Ribbon() {
           { id: "find", label: "Find", Icon: SearchIcon, run: () => setPanel("search"), on: panel === "search", off: !reading, tip: "Find text (Ctrl+F)" },
           { id: "dark", label: "Reading mode", Icon: MoonIcon, run: () => setDark(!view.dark), on: view.dark, off: !reading, tip: "Light text on dark pages, easier at night" },
           { id: "full", label: "Full screen", Icon: FullScreenIcon, run: () => void toggleFullscreen(), tip: "Full screen (F11)" },
+          { id: "print", label: "Print", Icon: PrintIcon, run: () => { if (doc) void printDocument(doc); }, tip: "Print (Ctrl+P)" },
         ],
       },
     ],
@@ -372,7 +401,23 @@ export function Ribbon() {
         label: "Arrange",
         items: [
           { id: "organize", label: "Organize pages", Icon: OrganizeIcon, run: tool("organize"), big: true, on: page === "organize", tip: "Reorder, rotate, delete, insert and extract pages" },
+          { id: "blank", label: "Blank page", Icon: BlankPageIcon, run: () => void addBlank(), off: !reading, tip: "Insert a blank page after this one" },
           { id: "extract", label: "Extract pages", Icon: ExtractIcon, run: () => go("organize"), tip: "Select pages in Organize, then Extract" },
+        ],
+      },
+      {
+        label: "Page marks",
+        items: [
+          { id: "watermark", label: "Watermark", Icon: WatermarkIcon, run: tool("watermark"), on: page === "watermark", tip: "DRAFT, CONFIDENTIAL or a picture across pages" },
+          { id: "headerfooter", label: "Header & footer", Icon: HeaderFooterIcon, run: tool("headerfooter"), on: page === "headerfooter", tip: "Page numbers, dates, Bates numbers" },
+          { id: "crop", label: "Crop", Icon: CropIcon, run: tool("crop"), on: page === "crop", tip: "Trim page edges" },
+        ],
+      },
+      {
+        label: "Document",
+        items: [
+          { id: "properties", label: "Properties", Icon: InfoIcon, run: tool("properties"), on: page === "properties", tip: "Title, author, keywords" },
+          { id: "compare", label: "Compare", Icon: CompareIcon, run: tool("compare"), on: page === "compare", tip: "What changed between two versions" },
         ],
       },
       {

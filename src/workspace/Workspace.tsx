@@ -16,6 +16,11 @@ import { Organize } from "../pages/Organize";
 import { SettingsPage } from "../pages/Settings";
 import { Sign } from "../pages/Sign";
 import { Split } from "../pages/Split";
+import { Watermark } from "../pages/Watermark";
+import { HeaderFooter } from "../pages/HeaderFooter";
+import { Crop } from "../pages/Crop";
+import { Properties } from "../pages/Properties";
+import { Compare } from "../pages/Compare";
 import { DocView } from "./DocView";
 import { Ribbon } from "./Ribbon";
 import { back, go, usePage } from "./route";
@@ -41,6 +46,16 @@ function ToolPage({ page }: { page: Page }) {
       return <Convert />;
     case "ocr":
       return <Ocr />;
+    case "watermark":
+      return <Watermark />;
+    case "headerfooter":
+      return <HeaderFooter />;
+    case "crop":
+      return <Crop />;
+    case "properties":
+      return <Properties />;
+    case "compare":
+      return <Compare />;
     case "settings":
       return <SettingsPage />;
     case "view":

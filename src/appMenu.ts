@@ -26,6 +26,7 @@ import { checkAndDownload } from "./lib/updates";
 import type { Entry, MenuDef } from "./shell/menu";
 import { editCommand, openShellDialog, pasteText, setZoom, textFieldFocused, toggleFullscreen, zoomStep } from "./shell/shell";
 import { focusSearch, togglePanel, usePanel } from "./workspace/panels";
+import { printDocument } from "./workspace/print";
 import { editAction, forgetView, rotateView, SCROLL, setDark, setScale, setScroll, setSpread, SPREAD, useView, zoom, goToPage } from "./workspace/viewer";
 
 const LAB_NAMES: Record<string, string> = { deskzero: "DeskZero", deskmedic: "DeskMedic" };
@@ -80,6 +81,7 @@ export function useAppMenus(page: Page, go: (p: Page) => void): MenuDef[] {
         "-",
         { id: "save-as", label: "Save as…", accel: "Mod+S", enabled: hasDoc, run: () => void saveAs() },
         { id: "save-over", label: "Save over original…", accel: "Mod+Shift+S", enabled: () => !!currentDoc()?.dirty, run: () => void saveOver() },
+        { id: "print", label: "Print…", accel: "Mod+P", enabled: hasDoc, run: () => { const d = currentDoc(); if (d) void printDocument(d); } },
         { id: "reveal", label: "Show in folder", enabled: hasDoc, run: () => api.revealFile(currentDoc()?.path ?? "") },
         "-",
         { id: "close", label: "Close tab", accel: "Mod+W", enabled: hasDoc, run: () => closeTab(currentDoc()?.id ?? null) },

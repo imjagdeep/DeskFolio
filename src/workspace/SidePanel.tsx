@@ -2,12 +2,13 @@
 // outline) and search, switched by the icon rail on its left edge.
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowDownIcon, ArrowUpIcon, BookmarkIcon, ChevronRightIcon, CloseIcon, CommentsIcon, PagesIcon, SearchIcon, type IconType } from "../components/Icons";
+import { ArrowDownIcon, ArrowUpIcon, BookmarkIcon, CloseIcon, CommentsIcon, PagesIcon, SearchIcon, type IconType } from "../components/Icons";
+import { Bookmarks } from "./Bookmarks";
 import { Comments } from "./Comments";
 import type { OpenDoc } from "../lib/doc";
 import { renderPage } from "../lib/pdfjs";
 import { setPanel, usePanel, type PanelId } from "./panels";
-import { closeFind, find, goToDest, goToPage, useView } from "./viewer";
+import { closeFind, find, goToPage, useView } from "./viewer";
 
 const RAIL: { id: PanelId; label: string; Icon: IconType }[] = [
   { id: "pages", label: "Pages", Icon: PagesIcon },
@@ -43,7 +44,7 @@ export function SidePanel({ doc }: { doc: OpenDoc }) {
             </button>
           </header>
           {panel === "pages" && <Thumbs doc={doc} />}
-          {panel === "outline" && <Outline doc={doc} />}
+          {panel === "outline" && <Bookmarks doc={doc} />}
           {panel === "comments" && <Comments doc={doc} />}
           {panel === "search" && <Search doc={doc} />}
         </section>
@@ -119,66 +120,6 @@ function Thumb({ doc, n, size, active, onClick }: { doc: OpenDoc; n: number; siz
       </span>
       <span className="thumb-no">{n}</span>
     </button>
-  );
-}
-
-// ---------- bookmarks ----------
-
-interface OutlineItem {
-  title: string;
-  dest: string | unknown[] | null;
-  items: OutlineItem[];
-}
-
-function Outline({ doc }: { doc: OpenDoc }) {
-  const [items, setItems] = useState<OutlineItem[] | null>(null);
-  const [error, setError] = useState(false);
-  useEffect(() => {
-    let live = true;
-    doc.pdf
-      .getOutline()
-      .then((o) => live && setItems((o ?? []) as OutlineItem[]))
-      .catch(() => live && setError(true));
-    return () => {
-      live = false;
-    };
-  }, [doc.pdf]);
-  if (error) return <p className="side-note">The bookmarks in this PDF couldn't be read.</p>;
-  if (items === null) return <p className="side-note">Reading bookmarks…</p>;
-  if (!items.length) return <p className="side-note">This PDF has no bookmarks.</p>;
-  return (
-    <ul className="outline" role="tree">
-      {items.map((it, i) => (
-        <OutlineNode key={i} item={it} depth={0} />
-      ))}
-    </ul>
-  );
-}
-
-function OutlineNode({ item, depth }: { item: OutlineItem; depth: number }) {
-  const [open, setOpen] = useState(depth === 0 && item.items.length < 12);
-  return (
-    <li role="treeitem" aria-expanded={item.items.length ? open : undefined}>
-      <div className="outline-row" style={{ paddingLeft: 4 + depth * 14 }}>
-        {item.items.length > 0 ? (
-          <button className={open ? "outline-twisty open" : "outline-twisty"} aria-label={open ? "Collapse" : "Expand"} onClick={() => setOpen(!open)}>
-            <ChevronRightIcon size={12} />
-          </button>
-        ) : (
-          <span className="outline-twisty" />
-        )}
-        <button className="outline-title" onClick={() => goToDest(item.dest)} title={item.title}>
-          {item.title}
-        </button>
-      </div>
-      {open && item.items.length > 0 && (
-        <ul role="group">
-          {item.items.map((c, i) => (
-            <OutlineNode key={i} item={c} depth={depth + 1} />
-          ))}
-        </ul>
-      )}
-    </li>
   );
 }
 

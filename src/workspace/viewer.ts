@@ -61,7 +61,7 @@ const initial: ViewState = {
   page: 1,
   pages: 0,
   scale: 1,
-  preset: "page-width",
+  preset: "auto",
   rotation: 0,
   scroll: SCROLL.vertical,
   spread: SPREAD.none,
@@ -80,7 +80,6 @@ const patch = (p: Partial<ViewState>) => viewStore.set({ ...viewStore.get(), ...
 const remembered = new Map<number, { page: number; scale: string; rotation: number; scroll: number; spread: number; mode: number }>();
 
 let viewer: PDFViewer | null = null;
-let link: PDFLinkService | null = null;
 let bus: EventBus | null = null;
 let tab: number | null = null;
 /** pdf.js creates its editor after the first page loads; a tool chosen before that waits here. */
@@ -114,7 +113,6 @@ export function mountViewer(container: HTMLDivElement, inner: HTMLDivElement, ta
   });
   linkService.setViewer(v);
   viewer = v;
-  link = linkService;
   bus = eventBus;
   tab = tabId;
   editorReady = false;
@@ -148,7 +146,7 @@ export function mountViewer(container: HTMLDivElement, inner: HTMLDivElement, ta
 
   const keep = remembered.get(tabId);
   eventBus.on("pagesinit", () => {
-    v.currentScaleValue = keep?.scale ?? "page-width";
+    v.currentScaleValue = keep?.scale ?? "auto";
     if (keep) {
       v.pagesRotation = keep.rotation;
       v.scrollMode = keep.scroll;
@@ -219,7 +217,6 @@ export function mountViewer(container: HTMLDivElement, inner: HTMLDivElement, ta
     linkService.setDocument(null, null);
     if (viewer === v) {
       viewer = null;
-      link = null;
       bus = null;
       tab = null;
       patch({ ready: false, mode: EDIT.none, pendingMarks: false, find: { ...viewStore.get().find, current: 0, total: 0, state: "idle" } });
@@ -239,6 +236,7 @@ function patchFind(p: Partial<ViewState["find"]>) {
 
 export const hasViewer = () => viewer !== null;
 export const viewMode = () => viewStore.get().mode;
+export const viewPage = () => viewStore.get().page;
 export const activeViewerTab = () => tab;
 
 // ---------- commands (ribbon, status bar, menus, keys) ----------
@@ -277,11 +275,6 @@ export function setSpread(mode: number) {
 
 export function setDark(on: boolean) {
   patch({ dark: on });
-}
-
-/** Jump to a destination from the outline (bookmarks). */
-export function goToDest(dest: string | unknown[] | null) {
-  if (link && dest) void link.goToDestination(dest);
 }
 
 export interface FindOptions {

@@ -407,3 +407,57 @@ export const CommentsIcon = (p: IconProps) => (
     <path d="M4.5 5.5h15v10h-8l-4.5 3.5v-3.5h-2.5z" />
   </Svg>
 );
+
+// ---------- page tools ----------
+
+export const WatermarkIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7 3.5h7l4.5 4.5v12.5H7z" />
+    <path d="M9.5 16.5 16 10" strokeDasharray="2 2" />
+  </Svg>
+);
+
+export const HeaderFooterIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="5" y="3.5" width="14" height="17" rx="1.5" />
+    <path d="M8 7h8M8 17h4" />
+    <path d="M8 11.5h8M8 13.8h6" opacity="0.45" />
+  </Svg>
+);
+
+export const CropIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7 3v14h14" />
+    <path d="M3 7h14v14" />
+  </Svg>
+);
+
+export const BlankPageIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7 3.5h7l4.5 4.5v12.5H7z" />
+    <path d="M12.75 11.5v6M9.75 14.5h6" />
+  </Svg>
+);
+
+export const InfoIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 11v5.5M12 7.8v.2" />
+  </Svg>
+);
+
+export const PrintIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7 8V3.5h10V8" />
+    <rect x="3.5" y="8" width="17" height="8.5" rx="1.5" />
+    <path d="M7 13.5h10v7H7z" />
+  </Svg>
+);
+
+export const CompareIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3.5" y="4.5" width="7" height="15" rx="1" />
+    <rect x="13.5" y="4.5" width="7" height="15" rx="1" />
+    <path d="M5.5 9h3M15.5 9h3M5.5 12h3M15.5 12h2" />
+  </Svg>
+);
