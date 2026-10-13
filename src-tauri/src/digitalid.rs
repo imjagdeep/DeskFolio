@@ -3,7 +3,9 @@
 //! keeps saved IDs. The IDs themselves are stored by the web side, already
 //! encrypted with the ID's password; nothing here keeps a key in the clear.
 
-use p12_keystore::{Certificate, KeyStore, KeyStoreEntry, Pkcs12ImportPolicy, PrivateKey, PrivateKeyChain};
+use p12_keystore::{
+    Certificate, KeyStore, KeyStoreEntry, Pkcs12ImportPolicy, PrivateKey, PrivateKeyChain,
+};
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -20,17 +22,25 @@ pub struct IdParts {
 
 /// Read a .pfx/.p12: the first private key with its certificates.
 pub fn import(data: &[u8], password: &str) -> Result<IdParts, String> {
-    let store = KeyStore::from_pkcs12(data, password, Pkcs12ImportPolicy::Relaxed).map_err(|e| {
-        let msg = e.to_string();
-        if msg.to_lowercase().contains("mac") || msg.to_lowercase().contains("password") || msg.to_lowercase().contains("decrypt") {
-            "That password doesn't open this digital ID.".to_string()
-        } else {
-            format!("This file isn't a digital ID DeskFolio can read ({msg}).")
-        }
-    })?;
-    let (_, chain) = store.private_key_chain().ok_or("This file has no private key, so it can't be used to sign (it may be a certificate only).")?;
+    let store =
+        KeyStore::from_pkcs12(data, password, Pkcs12ImportPolicy::Relaxed).map_err(|e| {
+            let msg = e.to_string();
+            if msg.to_lowercase().contains("mac")
+                || msg.to_lowercase().contains("password")
+                || msg.to_lowercase().contains("decrypt")
+            {
+                "That password doesn't open this digital ID.".to_string()
+            } else {
+                format!("This file isn't a digital ID DeskFolio can read ({msg}).")
+            }
+        })?;
+    let (_, chain) = store.private_key_chain().ok_or(
+        "This file has no private key, so it can't be used to sign (it may be a certificate only).",
+    )?;
     let certs = chain.certs();
-    let first = certs.first().ok_or("This digital ID has a key but no certificate.")?;
+    let first = certs
+        .first()
+        .ok_or("This digital ID has a key but no certificate.")?;
     Ok(IdParts {
         cert: first.as_der().to_vec(),
         chain: certs.iter().skip(1).map(|c| c.as_der().to_vec()).collect(),
@@ -43,14 +53,24 @@ pub fn export(parts: &IdParts, password: &str, alias: &str) -> Result<Vec<u8>, S
     if password.len() < 6 {
         return Err("Use a password of at least 6 characters for the exported file.".into());
     }
-    let key = PrivateKey::from_der(&parts.pkcs8).map_err(|e| format!("the private key is damaged: {e}"))?;
-    let mut certs = vec![Certificate::from_der(&parts.cert).map_err(|e| format!("the certificate is damaged: {e}"))?];
+    let key = PrivateKey::from_der(&parts.pkcs8)
+        .map_err(|e| format!("the private key is damaged: {e}"))?;
+    let mut certs = vec![Certificate::from_der(&parts.cert)
+        .map_err(|e| format!("the certificate is damaged: {e}"))?];
     for c in &parts.chain {
-        certs.push(Certificate::from_der(c).map_err(|e| format!("a chain certificate is damaged: {e}"))?);
+        certs.push(
+            Certificate::from_der(c).map_err(|e| format!("a chain certificate is damaged: {e}"))?,
+        );
     }
     let mut store = KeyStore::new();
-    store.add_entry(alias, KeyStoreEntry::PrivateKeyChain(PrivateKeyChain::new(alias.as_bytes(), key, certs)));
-    store.writer(password).write().map_err(|e| format!("couldn't write the digital ID: {e}"))
+    store.add_entry(
+        alias,
+        KeyStoreEntry::PrivateKeyChain(PrivateKeyChain::new(alias.as_bytes(), key, certs)),
+    );
+    store
+        .writer(password)
+        .write()
+        .map_err(|e| format!("couldn't write the digital ID: {e}"))
 }
 
 /// The folder for saved IDs (created if needed).
@@ -65,13 +85,19 @@ pub fn valid_id_file(name: &str) -> bool {
     name.len() <= 80
         && name.starts_with("id-")
         && name.ends_with(".json")
-        && name[3..name.len() - 5].chars().all(|c| c.is_ascii_hexdigit())
+        && name[3..name.len() - 5]
+            .chars()
+            .all(|c| c.is_ascii_hexdigit())
 }
 
 pub fn list(dir: &Path) -> Result<Vec<String>, String> {
     let mut out = Vec::new();
     for e in fs::read_dir(dir).map_err(|e| format!("can't read {}: {e}", dir.display()))? {
-        let name = e.map_err(|e| e.to_string())?.file_name().to_string_lossy().into_owned();
+        let name = e
+            .map_err(|e| e.to_string())?
+            .file_name()
+            .to_string_lossy()
+            .into_owned();
         if valid_id_file(&name) {
             out.push(name);
         }
@@ -115,7 +141,11 @@ mod tests {
 
     #[test]
     fn export_then_import_round_trip() {
-        let parts = IdParts { cert: CERT.to_vec(), chain: vec![], pkcs8: KEY.to_vec() };
+        let parts = IdParts {
+            cert: CERT.to_vec(),
+            chain: vec![],
+            pkcs8: KEY.to_vec(),
+        };
         let pfx = export(&parts, "another-pass", "Alex").unwrap();
         assert_eq!(import(&pfx, "another-pass").unwrap(), parts);
     }
@@ -131,8 +161,14 @@ mod tests {
     #[test]
     fn rejects_garbage_and_short_passwords() {
         assert!(import(b"not a pfx", "x").is_err());
-        let parts = IdParts { cert: CERT.to_vec(), chain: vec![], pkcs8: KEY.to_vec() };
-        assert!(export(&parts, "123", "x").unwrap_err().contains("6 characters"));
+        let parts = IdParts {
+            cert: CERT.to_vec(),
+            chain: vec![],
+            pkcs8: KEY.to_vec(),
+        };
+        assert!(export(&parts, "123", "x")
+            .unwrap_err()
+            .contains("6 characters"));
     }
 
     #[test]

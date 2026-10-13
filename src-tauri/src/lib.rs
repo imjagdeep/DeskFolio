@@ -36,7 +36,10 @@ fn app_info(app: AppHandle) -> AppInfo {
 // ---------- digital IDs (signing) ----------
 
 fn ids_dir(app: &AppHandle) -> CmdResult<PathBuf> {
-    let base = app.path().app_data_dir().map_err(|e| format!("no app data folder: {e}"))?;
+    let base = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("no app data folder: {e}"))?;
     digitalid::ids_dir(&base)
 }
 
@@ -53,9 +56,20 @@ async fn digital_id_import(path: PathBuf, password: String) -> CmdResult<digital
 
 /// Write a digital ID as a .pfx (backup or use elsewhere).
 #[tauri::command]
-async fn digital_id_export(path: PathBuf, cert: Vec<u8>, chain: Vec<Vec<u8>>, pkcs8: Vec<u8>, password: String, alias: String) -> CmdResult<()> {
+async fn digital_id_export(
+    path: PathBuf,
+    cert: Vec<u8>,
+    chain: Vec<Vec<u8>>,
+    pkcs8: Vec<u8>,
+    password: String,
+    alias: String,
+) -> CmdResult<()> {
     tauri::async_runtime::spawn_blocking(move || {
-        let pfx = digitalid::export(&digitalid::IdParts { cert, chain, pkcs8 }, &password, &alias)?;
+        let pfx = digitalid::export(
+            &digitalid::IdParts { cert, chain, pkcs8 },
+            &password,
+            &alias,
+        )?;
         files::write_atomic(&path, &pfx)
     })
     .await
