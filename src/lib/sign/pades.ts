@@ -138,7 +138,12 @@ export async function signPdf(bytes: Uint8Array, o: SignOptions, signer: Signer)
   const widgetRef = ctx.register(widget);
   fields.push(widgetRef);
   acro.set(PDFName.of("SigFlags"), PDFNumber.of(3));
-  page.node.addAnnot(widgetRef);
+  // Not page.node.addAnnot(): it "normalizes" the page first (wraps its
+  // content in new q/Q streams, rewrites resources), which an earlier
+  // signer's validator reports as a change to their signed page.
+  const annots = page.node.lookupMaybe(PDFName.of("Annots"), PDFArray);
+  if (annots) annots.push(widgetRef);
+  else page.node.set(PDFName.of("Annots"), ctx.obj([widgetRef]));
 
   // Uncompressed, so the placeholders can be found and filled in place.
   const out = new Uint8Array(await doc.commit({ useObjectStreams: false }));
