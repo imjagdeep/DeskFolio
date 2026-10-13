@@ -52,17 +52,26 @@ export function SignDialog() {
 
   useEffect(() => {
     if (!req) return;
+    let live = true;
     setPw("");
+    // Hide the previous list until this one is read, so a choice made in the
+    // meantime isn't switched back to the last-used ID when it arrives.
+    setIds(null);
     listIds()
       .then((list) => {
+        if (!live) return;
         setIds(list);
         const last = readLast();
         setFile(list.some((i) => i.file === last) ? last : (list[0]?.file ?? ""));
       })
       .catch((e) => {
+        if (!live) return;
         toastError(e);
         setIds([]);
       });
+    return () => {
+      live = false;
+    };
   }, [req]);
 
   if (!req) return null;
