@@ -276,10 +276,7 @@ impl Account {
         body: Option<Vec<u8>>,
     ) -> Result<Vec<u8>, String> {
         let t = self.token(false).await?;
-        match self
-            .send_raw(method.clone(), path, body.clone(), &t)
-            .await
-        {
+        match self.send_raw(method.clone(), path, body.clone(), &t).await {
             Err(e) if e.starts_with("401:") => {
                 let t = self.token(true).await?;
                 self.send_raw(method, path, body, &t).await
