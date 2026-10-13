@@ -262,3 +262,22 @@ button.danger-fill:hover:not(:disabled) { background: #b71c1c; filter: none; }
 .link-draft { position: absolute; z-index: 40; border: 1.5px dashed #2563eb; background: rgba(37, 99, 235, 0.08); pointer-events: none; }
 .link-pop { width: 260px; padding: 6px; border-radius: 8px; background: var(--window); box-shadow: var(--shadow-lg); color: var(--text); }
 .link-pop input { width: 100%; height: 28px; }
+
+/* ---------- digital signatures ---------- */
+.digisign-draft { fill: color-mix(in srgb, var(--accent) 10%, transparent); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.sign-dialog { width: min(520px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 10px; }
+.sign-dialog .form-row { display: flex; gap: 10px; }
+.sign-dialog .form-row .field { flex: 1; }
+.sig-list { list-style: none; margin: 0; padding: 0 10px 10px; display: flex; flex-direction: column; gap: 8px; overflow: auto; }
+.sig-item { padding: 10px; border-radius: 8px; background: var(--window); box-shadow: 0 0 0 0.5px var(--group-border); display: flex; flex-direction: column; gap: 3px; }
+.sig-item p { margin: 4px 0; }
+.sig-title { display: flex; align-items: center; gap: 6px; }
+.sig-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.sig-dot.ok { background: var(--green); }
+.sig-dot.warn { background: var(--orange); }
+.sig-dot.bad { background: var(--red); }
+.side-pad { padding: 0 12px; }
+.id-card { margin-bottom: 10px; }
+.id-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.id-card .form-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }

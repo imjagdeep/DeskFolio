@@ -17,6 +17,7 @@ export type Page =
   | "properties"
   | "compare"
   | "protect"
+  | "digitalids"
   | "settings";
 
 export const PAGES: { page: Page; label: string; needsDoc?: boolean }[] = [
@@ -35,5 +36,6 @@ export const PAGES: { page: Page; label: string; needsDoc?: boolean }[] = [
   { page: "compress", label: "Compress" },
   { page: "convert", label: "Convert" },
   { page: "ocr", label: "Recognise text (OCR)" },
+  { page: "digitalids", label: "Digital IDs" },
   { page: "settings", label: "Settings" },
 ];

@@ -10,6 +10,7 @@ import { mergeLines, STAMPS } from "../lib/pdf/markup";
 import { currentDoc } from "../lib/doc";
 import { addToDocument, markupState, RGB_HEX, useMarkup } from "./markup";
 import { addRedactions } from "./redact";
+import { requestSignature } from "./SignDialog";
 import { pageOf, toPdfPoint } from "./viewer";
 
 const NOTE_YELLOW: RGB = [1, 0.85, 0.3];
@@ -94,6 +95,10 @@ export function MarkupLayer({ container }: { container: React.RefObject<HTMLDivE
       if (!a || !b) return;
       const st = markupState();
       let mark: Mark;
+      if (tool === "digisign") {
+        requestSignature({ page: d.page, rect: [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])] });
+        return;
+      }
       if (tool === "redact") {
         const d0 = currentDoc();
         if (d0) addRedactions(d0.id, [{ page: d.page, rect: [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])], label: "Area" }]);
@@ -199,6 +204,7 @@ export function MarkupLayer({ container }: { container: React.RefObject<HTMLDivE
       <svg className="markup-preview" width="100%" height="100%">
         {m.tool === "square" && <rect x={x} y={y} width={w} height={h} fill="none" stroke={stroke} strokeWidth={sw} />}
         {m.tool === "redact" && <rect x={x} y={y} width={w} height={h} className="redact-draft" />}
+        {m.tool === "digisign" && <rect x={x} y={y} width={w} height={h} className="digisign-draft" />}
         {m.tool === "circle" && <ellipse cx={x + w / 2} cy={y + h / 2} rx={w / 2} ry={h / 2} fill="none" stroke={stroke} strokeWidth={sw} />}
         {(m.tool === "line" || m.tool === "arrow") && <line x1={d.x0} y1={d.y0} x2={d.x1} y2={d.y1} stroke={stroke} strokeWidth={sw} strokeLinecap="round" />}
       </svg>

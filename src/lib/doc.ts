@@ -10,6 +10,7 @@ import { useSyncExternalStore } from "react";
 import { api } from "./api";
 import { fileName, siblingPath } from "./format";
 import { decrypt, encrypt, type Protection } from "./pdf/protect";
+import { hasSignatures } from "./sign/pades";
 import { closePdf, loadPdf, PasswordNeeded, type PDFDocumentProxy } from "./pdfjs";
 import { createStore, toast, toastError } from "./store";
 
@@ -73,6 +74,8 @@ function stackOf(id: number): UndoEntry[] {
   return st;
 }
 const MAX_UNDO = 15;
+/** Signed documents the user already agreed to change. */
+const warnedSigned = new Set<number>();
 let nextId = 1;
 
 /** Show a tab (null = Home). */
@@ -315,6 +318,18 @@ export async function flushPending(): Promise<void> {
 export async function applyEdit(bytes: Uint8Array, what: string, id: number | null = tabsStore.get().active): Promise<boolean> {
   const d = tabsStore.get().docs.find((x) => x.id === id);
   if (!d) return false;
+  // Changing a signed PDF breaks its signatures (except signing it again, which adds).
+  if (!what.startsWith("Signed by") && !warnedSigned.has(d.id) && hasSignatures(d.bytes)) {
+    const { ask } = await import("@tauri-apps/plugin-dialog");
+    const go = await ask("This PDF is digitally signed. Changing it will show the signatures as broken (or as changed after signing). Change it anyway?", {
+      title: "Signed document",
+      kind: "warning",
+      okLabel: "Change it",
+      cancelLabel: "Keep it as signed",
+    });
+    if (!go) return false;
+    warnedSigned.add(d.id);
+  }
   try {
     const pdf = await loadPdf(bytes, d.password);
     const stack = stackOf(d.id);
@@ -363,6 +378,18 @@ export async function undo(): Promise<void> {
 /** What goes to disk: the document with its protection put back on. */
 async function bytesToSave(d: OpenDoc): Promise<Uint8Array> {
   return d.protection ? encrypt(d.bytes, d.protection) : d.bytes;
+}
+
+/** After signing: the open document becomes the signed file just written. */
+export async function replaceWithSaved(bytes: Uint8Array, path: string, what: string): Promise<void> {
+  const d = docStore.get();
+  if (!d) return;
+  const pdf = await loadPdf(bytes);
+  const stack = stackOf(d.id);
+  stack.push({ bytes: d.bytes, edits: d.edits, pages: d.pages });
+  closePdf(d.pdf);
+  putDoc({ ...d, path, name: fileName(path), bytes, pdf, pages: pdf.numPages, dirty: false, edits: [...d.edits, what], rev: d.rev + 1 });
+  remember(path);
 }
 
 /** Protect tool: set, change or remove (null) the document's protection. */

@@ -22,6 +22,8 @@ import { Crop } from "../pages/Crop";
 import { Properties } from "../pages/Properties";
 import { Compare } from "../pages/Compare";
 import { Protect } from "../pages/Protect";
+import { DigitalIds } from "../pages/DigitalIds";
+import { SignDialog } from "./SignDialog";
 import { DocView } from "./DocView";
 import { Ribbon } from "./Ribbon";
 import { back, go, usePage } from "./route";
@@ -61,6 +63,8 @@ function ToolPage({ page }: { page: Page }) {
       return <Protect />;
     case "settings":
       return <SettingsPage />;
+    case "digitalids":
+      return <DigitalIds />;
     case "view":
       return null;
   }
@@ -129,6 +133,7 @@ export function Workspace() {
             <DocView doc={doc} />
           </div>
           <StatusBar doc={doc} />
+          <SignDialog />
         </>
       ) : (
         <div className="task">

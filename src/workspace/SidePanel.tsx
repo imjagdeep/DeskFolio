@@ -2,10 +2,11 @@
 // outline) and search, switched by the icon rail on its left edge.
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowDownIcon, ArrowUpIcon, BookmarkIcon, CloseIcon, CommentsIcon, PagesIcon, RedactIcon, SearchIcon, type IconType } from "../components/Icons";
+import { ArrowDownIcon, ArrowUpIcon, BookmarkIcon, CloseIcon, CommentsIcon, PagesIcon, RedactIcon, SearchIcon, SignIcon, type IconType } from "../components/Icons";
 import { Bookmarks } from "./Bookmarks";
 import { Comments } from "./Comments";
 import { RedactPanel } from "./RedactPanel";
+import { SignaturesPanel } from "./SignaturesPanel";
 import type { OpenDoc } from "../lib/doc";
 import { renderPage } from "../lib/pdfjs";
 import { setPanel, usePanel, type PanelId } from "./panels";
@@ -17,6 +18,7 @@ const RAIL: { id: PanelId; label: string; Icon: IconType }[] = [
   { id: "comments", label: "Comments", Icon: CommentsIcon },
   { id: "search", label: "Search", Icon: SearchIcon },
   { id: "redact", label: "Redact", Icon: RedactIcon },
+  { id: "signatures", label: "Signatures", Icon: SignIcon },
 ];
 
 export function SidePanel({ doc }: { doc: OpenDoc }) {
@@ -50,6 +52,7 @@ export function SidePanel({ doc }: { doc: OpenDoc }) {
           {panel === "comments" && <Comments doc={doc} />}
           {panel === "search" && <Search doc={doc} />}
           {panel === "redact" && <RedactPanel doc={doc} />}
+          {panel === "signatures" && <SignaturesPanel doc={doc} />}
         </section>
       )}
     </div>

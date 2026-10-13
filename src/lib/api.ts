@@ -32,6 +32,12 @@ export const api = {
   /** PDF bytes made from a Word/Excel/PowerPoint file by Office or LibreOffice. */
   officeToPdf: async (path: string) => new Uint8Array(await invoke<ArrayBuffer>("office_to_pdf", { path })),
   takeStartupPaths: () => invoke<string[]>("take_startup_paths"),
+  /** Digital IDs: read a .pfx/.p12, write one, the saved-IDs folder and its files. */
+  digitalIdImport: (path: string, password: string) => invoke<{ cert: number[]; chain: number[][]; pkcs8: number[] }>("digital_id_import", { path, password }),
+  digitalIdExport: (path: string, cert: number[], chain: number[][], pkcs8: number[], password: string, alias: string) =>
+    invoke<void>("digital_id_export", { path, cert, chain, pkcs8, password, alias }),
+  digitalIds: () => invoke<[string, string[]]>("digital_ids"),
+  digitalIdDelete: (name: string) => invoke<void>("digital_id_delete", { name }),
   revealFile: (path: string) => invoke<void>("reveal_file", { path }),
   openLink: (id: "site" | "repo" | "issues" | "releases" | "developer" | LabToolId) => invoke<void>("open_link", { id }),
   /** The other DeskLab tools and whether each is installed here. */

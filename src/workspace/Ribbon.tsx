@@ -480,6 +480,22 @@ export function Ribbon() {
         label: "Fill & Sign",
         items: [{ id: "sign", label: "Fill & Sign", Icon: SignIcon, run: tool("sign"), big: true, on: page === "sign", tip: "Fill in forms, add text, dates, ticks and your signature" }],
       },
+      {
+        label: "Digital signature",
+        items: [
+          {
+            id: "digisign",
+            label: "Sign with digital ID",
+            Icon: LockIcon,
+            run: () => (go("view"), setOwnTool("digisign")),
+            on: isOwn("digisign"),
+            big: true,
+            tip: "Draw the signature box, then sign with your certificate (proves the PDF wasn't changed)",
+          },
+          { id: "sig-panel", label: "Check signatures", Icon: CheckIcon, run: () => (go("view"), setPanel("signatures")), tip: "See who signed and whether anything changed since" },
+          { id: "ids", label: "Digital IDs", Icon: SignIcon, run: () => go("digitalids"), tip: "Create, import or back up the IDs you sign with" },
+        ],
+      },
     ],
     convert: [
       {

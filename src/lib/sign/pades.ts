@@ -43,9 +43,14 @@ const latin1 = (b: Uint8Array) => {
   return s;
 };
 
-/** Does the file have digital signatures already? (quick check) */
+/** Does the file have digital signatures already? (quick byte search, no copying) */
 export function hasSignatures(bytes: Uint8Array): boolean {
-  return latin1(bytes).includes("/ByteRange");
+  const needle = [47, 66, 121, 116, 101, 82, 97, 110, 103, 101]; // "/ByteRange"
+  outer: for (let i = bytes.indexOf(47); i >= 0 && i <= bytes.length - needle.length; i = bytes.indexOf(47, i + 1)) {
+    for (let k = 1; k < needle.length; k++) if (bytes[i + k] !== needle[k]) continue outer;
+    return true;
+  }
+  return false;
 }
 
 /** Sign a PDF; returns the signed bytes (the original bytes plus an update). */
