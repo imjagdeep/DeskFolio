@@ -367,3 +367,11 @@ button.danger-fill:hover:not(:disabled) { background: #b71c1c; filter: none; }
 .zoom-pill { position: relative; width: 38px; height: 22px; display: grid; place-items: center; border-radius: 6px; font-size: 10.5px; font-variant-numeric: tabular-nums; color: var(--text-2); cursor: pointer; }
 .zoom-pill:hover { background: var(--hover); color: var(--text); }
 .zoom-pill select { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* Tool strip with names (Ctrl+B / the button at its bottom). */
+.tool-strip .rail-grow { flex: 1; min-height: 6px; }
+.tool-strip .strip-toggle { color: var(--text-2); flex: none; }
+.tool-strip.wide { width: 172px; align-items: stretch; padding: 6px 6px; }
+.tool-strip.wide .strip-group { align-items: stretch; }
+.tool-strip.wide .strip-btn { width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 0 9px; }
+.strip-label { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

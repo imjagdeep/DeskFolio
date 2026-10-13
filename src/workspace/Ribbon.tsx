@@ -18,6 +18,8 @@ import {
   WatermarkIcon,
   ArrowIcon,
   CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   CompareIcon,
   CompressIcon,
   ConvertIcon,
@@ -61,7 +63,7 @@ import { applyEdit, canUndo, currentDoc, saveAs, saveOver, undo, useDoc } from "
 import { insertBlank } from "../lib/pdf/pagetools";
 import { toastError } from "../lib/store";
 import { STAMPS } from "../lib/pdf/markup";
-import { toggleFullscreen } from "../shell/shell";
+import { toggleFullscreen, toggleSidebar, useCompactSidebar } from "../shell/shell";
 import { clearOwnTool, HEX_RGB, RGB_HEX, setMarkup, setOwnTool, useMarkup, type OwnTool } from "./markup";
 import type { Page } from "./pages";
 import { focusSearch, setPanel, usePanel } from "./panels";
@@ -158,6 +160,8 @@ export function Ribbon() {
   const panel = usePanel();
   const markup = useMarkup();
   const [chosen, setChosen] = useState<RibbonTab>("view");
+  // Icons only by default; Ctrl+B or the button at the bottom shows names (remembered).
+  const compact = useCompactSidebar();
   const [lastPage, setLastPage] = useState(page);
   const [hl, setHl] = useState(HIGHLIGHTS[0].hex);
   const [textSize, setTextSize] = useState(12);
@@ -546,7 +550,7 @@ export function Ribbon() {
           </button>
         </div>
       </div>
-      <aside className="tool-strip" role="toolbar" aria-orientation="vertical" aria-label={`${TABS.find((t) => t.id === chosen)?.label ?? ""} tools`}>
+      <aside className={compact ? "tool-strip" : "tool-strip wide"} role="toolbar" aria-orientation="vertical" aria-label={`${TABS.find((t) => t.id === chosen)?.label ?? ""} tools`}>
         {groups[chosen]
           .filter((g) => g.items.length)
           .map((g) => (
@@ -562,10 +566,22 @@ export function Ribbon() {
                   onClick={b.run}
                 >
                   <b.Icon size={19} />
+                  {!compact && <span className="strip-label">{b.label}</span>}
                 </button>
               ))}
             </div>
           ))}
+        <span className="rail-grow" />
+        <button
+          className="strip-btn strip-toggle"
+          title={compact ? "Show tool names (Ctrl+B)" : "Icons only (Ctrl+B)"}
+          aria-label={compact ? "Show tool names" : "Icons only"}
+          aria-expanded={!compact}
+          onClick={toggleSidebar}
+        >
+          {compact ? <ChevronRightIcon size={16} /> : <ChevronLeftIcon size={16} />}
+          {!compact && <span className="strip-label">Icons only</span>}
+        </button>
       </aside>
       {options.length > 0 && (
         <div className="tool-options" role="toolbar" aria-label="Tool options">
