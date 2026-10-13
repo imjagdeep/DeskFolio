@@ -1,0 +1,17 @@
+/* The optional DeskLab account page. Same file in every DeskLab app. */
+.account-card p { margin: 6px 0 12px; }
+.account-form { max-width: 420px; }
+.account-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
+.code-input { font-family: var(--mono, ui-monospace, monospace); font-size: 20px; letter-spacing: 0.3em; max-width: 180px; }
+.account-error { margin-top: 10px; padding: 8px 12px; border-radius: var(--radius); color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); font-size: 13px; }
+.account-who { display: flex; align-items: center; gap: 14px; }
+.account-who > div:nth-child(2) { flex: 1; min-width: 0; }
+.account-email { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
+.account-who .avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--accent-grad); color: var(--accent-text); font-weight: 600; font-size: 17px; }
+.device-list { display: flex; flex-direction: column; }
+.device-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 0.5px solid var(--sep); }
+.device-row:first-child { border-top: none; }
+.small-btn { height: 24px; padding: 0 10px; font-size: 12px; }
+button.danger { background: var(--red); color: #fff; }
+button.danger:hover:not(:disabled) { filter: brightness(1.08); }
+.danger-card h2 { color: var(--red); }

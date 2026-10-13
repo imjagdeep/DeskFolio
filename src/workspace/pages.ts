@@ -19,6 +19,7 @@ export type Page =
   | "compare"
   | "protect"
   | "digitalids"
+  | "account"
   | "settings";
 
 export const PAGES: { page: Page; label: string; needsDoc?: boolean }[] = [
@@ -39,5 +40,6 @@ export const PAGES: { page: Page; label: string; needsDoc?: boolean }[] = [
   { page: "convert", label: "Convert" },
   { page: "ocr", label: "Recognise text (OCR)" },
   { page: "digitalids", label: "Digital IDs" },
+  { page: "account", label: "DeskLab account" },
   { page: "settings", label: "Settings" },
 ];

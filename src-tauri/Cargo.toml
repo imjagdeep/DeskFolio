@@ -30,6 +30,12 @@ lopdf = "0.45"
 image = { version = "0.25", default-features = false, features = ["jpeg"] }
 # Digital IDs: reading and writing .pfx / .p12 files (incl. older Windows exports).
 p12-keystore = "0.4"
+# Optional DeskLab account (account.rs): HTTPS with the same rustls + ring the
+# updater uses, the OS keychain for the sign-in, and the computer's name.
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "json"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+keyring = "4"
+gethostname = "1"
 
 [dev-dependencies]
 tempfile = "3"
