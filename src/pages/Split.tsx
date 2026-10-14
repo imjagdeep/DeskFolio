@@ -78,7 +78,7 @@ export function Split() {
   return (
     <div className="page">
       <PageHeader title="Split" subtitle="Cut a PDF into several smaller ones.">
-        <button onClick={() => void pick()}>{src ? "Choose another PDF…" : "Choose a PDF…"}</button>
+        {src && <button onClick={() => void pick()}>Choose another PDF…</button>}
       </PageHeader>
 
       {!src ? (

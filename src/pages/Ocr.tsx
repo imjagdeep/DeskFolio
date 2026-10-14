@@ -16,6 +16,10 @@ export function Ocr() {
   if (!doc) {
     return (
       <div className="page">
+      <PageHeader
+        title="Recognise text"
+        subtitle="Read the text in scanned pages so you can search, select and copy it. The pages look exactly the same."
+      />
         <Empty Icon={OcrIcon} title="No PDF open" text="Open a scanned PDF to make its text searchable and copyable.">
           <button className="primary" onClick={() => void openDialog()}>
             Open a PDF…
@@ -61,7 +65,7 @@ export function Ocr() {
   return (
     <div className="page">
       <PageHeader
-        title="OCR"
+        title="Recognise text"
         subtitle="Read the text in scanned pages so you can search, select and copy it. The pages look exactly the same."
       />
       <div className="card convert-panel">

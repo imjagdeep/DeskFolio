@@ -137,7 +137,7 @@ button.link:hover:not(:disabled) { filter: none; text-decoration: underline; }
 button.link.danger { color: var(--red); }
 button.icon { width: 26px; padding: 0; height: 24px; }
 
-input:not([type="checkbox"]), select {
+input:not([type="checkbox"]):not([type="radio"]), select {
   height: 28px;
   padding: 0 9px;
   border-radius: 7px;
@@ -148,7 +148,7 @@ input:not([type="checkbox"]), select {
   min-width: 0;
 }
 select { padding-right: 24px; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--text-2) 50%), linear-gradient(135deg, var(--text-2) 50%, transparent 50%); background-position: calc(100% - 13px) 12px, calc(100% - 9px) 12px; background-size: 4px 4px; background-repeat: no-repeat; }
-input:not([type="checkbox"]):focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+input:not([type="checkbox"]):not([type="radio"]):focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--accent); }
 
 /* macOS-style switch for every checkbox */
@@ -180,6 +180,8 @@ input[type="checkbox"]:checked { background: var(--accent); }
 input[type="checkbox"]:checked::after { background: var(--accent-text); }
 input[type="checkbox"]:checked::after { transform: translateX(13px); }
 input[type="checkbox"]:focus-visible { box-shadow: 0 0 0 3px var(--accent-soft); }
+input[type="radio"] { width: 15px; height: 15px; margin: 0; flex: none; accent-color: var(--accent); cursor: pointer; }
+.check-row input[type="radio"] { margin-top: 2px; }
 
 /* ---------- layout ---------- */
 .app { display: flex; height: 100%; }

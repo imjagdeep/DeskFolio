@@ -23,7 +23,7 @@ export function PageScopePicker({ value, onChange, pages }: { value: PageScope; 
     <div className="scope-picker">
       <div className="segmented" role="radiogroup" aria-label="Pages">
         <button role="radio" aria-checked={value.kind === "all"} className={value.kind === "all" ? "active" : ""} onClick={() => onChange({ kind: "all" })}>
-          All {pages} pages
+          {pages === 1 ? "All pages" : `All ${pages} pages`}
         </button>
         <button role="radio" aria-checked={value.kind === "current"} className={value.kind === "current" ? "active" : ""} onClick={() => onChange({ kind: "current" })}>
           Current page
@@ -61,7 +61,9 @@ export function LivePreview({ make, page, password, settingsKey, overlay }: { ma
           if (!live || !canvas.current) return;
           const p = await pdf.getPage(Math.min(page + 1, pdf.numPages));
           const vp = p.getViewport({ scale: 1 });
-          const scale = Math.min(460 / vp.width, 560 / vp.height);
+          // Fit the window too, so the page and its caption are seen whole.
+          const maxH = Math.max(260, Math.min(560, window.innerHeight - 300));
+          const scale = Math.min(460 / vp.width, maxH / vp.height);
           await renderPage(pdf, Math.min(page + 1, pdf.numPages), canvas.current, scale);
           if (live) {
             setSize({ w: vp.width * scale, h: vp.height * scale });

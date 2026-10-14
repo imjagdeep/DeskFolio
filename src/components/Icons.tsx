@@ -542,3 +542,11 @@ export const LinkIcon = (p: IconProps) => (
     <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
   </Svg>
 );
+
+export const IdCardIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3" y="5.5" width="18" height="13" rx="2" />
+    <circle cx="9" cy="11" r="2" />
+    <path d="M5.8 15.6a3.4 3.4 0 0 1 6.4 0M14.5 10h4M14.5 13.5h3" />
+  </Svg>
+);

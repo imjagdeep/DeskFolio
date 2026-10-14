@@ -67,7 +67,7 @@ export function Compress() {
   return (
     <div className="page">
       <PageHeader title="Compress" subtitle="Make a PDF smaller. Text and drawings stay sharp; photos are re-saved at a lower size.">
-        <button onClick={() => void pick()}>{src ? "Choose another PDF…" : "Choose a PDF…"}</button>
+        {src && <button onClick={() => void pick()}>Choose another PDF…</button>}
       </PageHeader>
 
       {!src ? (
