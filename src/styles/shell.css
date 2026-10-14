@@ -191,3 +191,9 @@
 .app-top-end { margin-left: auto; display: flex; align-items: center; gap: 6px; }
 .menu-back .menu-label { font-weight: 600; }
 .menu-back .menu-check { font-size: 15px; }
+
+/* Pages sit in the middle of the window, like DeskFolio's, not against the sidebar. */
+.content > .page { margin-left: auto; margin-right: auto; }
+/* The top row already shows the app's icon and name. */
+.app-top ~ .app .sidebar .brand-logo,
+.app-top ~ .app .sidebar .brand-name { display: none; }
