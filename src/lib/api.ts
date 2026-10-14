@@ -52,6 +52,12 @@ export const api = {
 
 export function errorText(e: unknown): string {
   if (typeof e === "string") return e;
+  // A slip in DeskFolio's own code ("x is not iterable") means nothing to the
+  // person using it: say so plainly and keep the details for the console.
+  if (e instanceof TypeError || e instanceof ReferenceError || e instanceof SyntaxError) {
+    console.error(e);
+    return "Something went wrong inside DeskFolio. Please try again; if it keeps happening, use Help › Report a problem.";
+  }
   if (e instanceof Error) return e.message;
   try {
     return JSON.stringify(e);

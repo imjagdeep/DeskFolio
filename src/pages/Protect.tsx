@@ -138,7 +138,7 @@ export function Protect() {
           <div className="page-actions">
             <button onClick={back}>Cancel</button>
             <button className="primary" disabled={!valid || (!changed && !current)} onClick={applyProtection}>
-              {changed ? "Set protection" : "Remove protection"}
+              {changed || !current ? "Set protection" : "Remove protection"}
             </button>
           </div>
         </div>

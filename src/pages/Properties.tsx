@@ -36,7 +36,7 @@ export function Properties() {
           const v: unknown = Object.getOwnPropertyDescriptor(info, k)?.value;
           return typeof v === "string" ? v : "";
         };
-        setFacts({ size: humanSize(doc.bytes.length), version: get("PDFFormatVersion"), producer: [get("Producer"), get("Creator")].filter(Boolean).join(" · "), created: get("CreationDate") });
+        setFacts({ size: humanSize(doc.bytes.length), version: get("PDFFormatVersion"), producer: [...new Set([get("Producer"), get("Creator")].map((v) => v.replace(/\s*\(https?:[^)]*\)/g, "").trim()).filter(Boolean))].join(" · "), created: get("CreationDate") });
       })
       .catch(() => live && setFacts({ size: humanSize(doc.bytes.length), version: "", producer: "", created: "" }));
     return () => {

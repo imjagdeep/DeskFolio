@@ -135,7 +135,7 @@ export function useAppMenus(page: Page, go: (p: Page) => void): MenuDef[] {
         "-",
         { id: "zoom-in", label: "Zoom in", accel: "Mod+=", run: () => (reading() ? zoom(1) : zoomStep(1)) },
         { id: "zoom-out", label: "Zoom out", accel: "Mod+-", run: () => (reading() ? zoom(-1) : zoomStep(-1)) },
-        { id: "zoom-reset", label: reading() ? "Fit width" : "Actual size", accel: "Mod+0", run: () => (reading() ? setScale("page-width") : setZoom(1)) },
+        { id: "zoom-reset", label: "Reset zoom", accel: "Mod+0", run: () => (reading() ? setScale("page-width") : setZoom(1)) },
         { id: "fit-page", label: "Fit page", accel: "Mod+2", enabled: reading, run: () => setScale("page-fit") },
         { id: "actual-size", label: "Actual size", accel: "Mod+1", enabled: reading, run: () => setScale("page-actual") },
         "-",

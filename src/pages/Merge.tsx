@@ -111,9 +111,11 @@ export function Merge() {
             Add the open PDF
           </button>
         )}
-        <button className="with-icon" onClick={() => void pickPdfs(true, "Add PDFs").then(add).catch(toastError)}>
-          <PlusIcon size={14} /> Add PDFs…
-        </button>
+        {items.length > 0 && (
+          <button className="with-icon" onClick={() => void pickPdfs(true, "Add PDFs").then(add).catch(toastError)}>
+            <PlusIcon size={14} /> Add PDFs…
+          </button>
+        )}
       </PageHeader>
 
       {items.length === 0 ? (
