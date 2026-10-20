@@ -13,6 +13,7 @@
 //!   JPEG would blur their edges;
 //! - CMYK Flate images are only shrunk when oversized and stay lossless CMYK:
 //!   converting them to RGB would change their colours. CMYK JPEGs stay as they are.
+//!
 //! Masks, Decode arrays, 1-bit, JPX/CCITT/JBIG2 images are left alone.
 //! Identical images (the same logo on every page) are stored once. Every image's
 //! size is checked before it is decoded, so a hostile PDF can't make this
@@ -354,7 +355,8 @@ fn flate_samples(
     }
     let raw = &raw[..row * h as usize];
     Ok(Some(if bytes_per_sample == 2 {
-        raw.chunks_exact(2).map(|c| c[0]).collect()
+        // big-endian 16-bit samples: keep the high byte
+        raw.iter().step_by(2).copied().collect()
     } else {
         raw.to_vec()
     }))
