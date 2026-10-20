@@ -48,7 +48,24 @@ export const api = {
   /** Start an installed DeskLab tool, optionally with a file for it to open. */
   openTool: (id: LabToolId, file?: string) => invoke<void>("open_tool", { id, file: file ?? null }),
   notifyUpdate: (version: string) => invoke<void>("notify_update", { version }),
+  /** OCR language packs: the list (with what's downloaded), download one, its bytes, remove one. */
+  ocrLangs: () => invoke<OcrLangInfo[]>("ocr_langs"),
+  ocrLangDownload: (code: string) => invoke<void>("ocr_lang_download", { code }),
+  ocrLangData: async (code: string) => new Uint8Array(await invoke<ArrayBuffer>("ocr_lang_data", { code })),
+  ocrLangRemove: (code: string) => invoke<void>("ocr_lang_remove", { code }),
+  /** Trusted timestamps: the services on offer [id, name], and one RFC 3161 round trip. */
+  timestampServices: () => invoke<[string, string][]>("timestamp_services"),
+  timestampRequest: async (service: string, request: Uint8Array) =>
+    new Uint8Array(await invoke<ArrayBuffer>("timestamp_request", request, { headers: { "x-tsa": service } })),
 };
+
+export interface OcrLangInfo {
+  code: string;
+  name: string;
+  /** Download size in bytes. */
+  size: number;
+  installed: boolean;
+}
 
 export function errorText(e: unknown): string {
   if (typeof e === "string") return e;
