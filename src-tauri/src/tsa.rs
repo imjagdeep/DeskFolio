@@ -47,7 +47,10 @@ pub async fn request(client: &reqwest::Client, id: &str, body: Vec<u8>) -> Resul
             resp.status().as_u16()
         ));
     }
-    if resp.content_length().is_some_and(|n| n as usize > MAX_REPLY) {
+    if resp
+        .content_length()
+        .is_some_and(|n| n as usize > MAX_REPLY)
+    {
         return Err("the timestamp service's answer is too large".into());
     }
     let bytes = resp

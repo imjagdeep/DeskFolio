@@ -20,24 +20,114 @@ pub struct Pack {
 
 /// Pinned packs: code, name, exact size in bytes, SHA-256 of the .gz.
 pub const PACKS: &[Pack] = &[
-    Pack { code: "fra", name: "French", size: 707_406, sha256: "d611139672b3752c7097e671e4a1d9209dfd37f2aeb081ef6487fba3351e9255" },
-    Pack { code: "spa", name: "Spanish", size: 2_100_190, sha256: "40be52f97b5d4eb7460073dc1f94cd546b27150333c0bf854ed7e7132db6bceb" },
-    Pack { code: "deu", name: "German", size: 1_333_102, sha256: "306c4280d0cbed46fbff727486bd43b92730181bae80f56941a091f363bdf28b" },
-    Pack { code: "ita", name: "Italian", size: 1_660_998, sha256: "f702fcfad297ce028ede3626d1467b67939f23ff23595f9badd54681cf25a4d3" },
-    Pack { code: "por", name: "Portuguese", size: 1_392_239, sha256: "dacebc1386ddaaf8389f81094236cca0d690897cde693d48cbdaa881c86e2b4c" },
-    Pack { code: "nld", name: "Dutch", size: 3_005_696, sha256: "a2d904b6ddc4feb0d31ecfcd7361a554102e7aa2e278c54f4fc029e0d0815571" },
-    Pack { code: "pol", name: "Polish", size: 2_642_356, sha256: "a20fdec4ff99d8f8e84c708da3e42a4e935c26863055a0ed88aef5c66a59b91b" },
-    Pack { code: "rus", name: "Russian", size: 2_679_598, sha256: "f51f5edc992249ff9b70a227b22f242dfa47b2b1bbc7ae0ea74908640c101f6a" },
-    Pack { code: "ukr", name: "Ukrainian", size: 2_114_206, sha256: "ea2789a0ad99ff84bfd252a7410a1e8661a7bc5acaa41573d23b54b71446aa4c" },
-    Pack { code: "pan", name: "Punjabi (Gurmukhi)", size: 1_396_216, sha256: "10624ae040eb967316fcb1a1843421786a48542b22ef2fdd50afc00de58d27b5" },
-    Pack { code: "hin", name: "Hindi", size: 1_389_692, sha256: "f3b6a0d320df38d886178cdd727b90dbf9df3db053adb32bd9cf73f0463cda07" },
-    Pack { code: "ara", name: "Arabic", size: 1_661_906, sha256: "f4746c44b02342dd5b3d4f0198000f47d7c49f1a229e63e0f436c0592dcd9639" },
-    Pack { code: "heb", name: "Hebrew", size: 580_576, sha256: "9c70b524200dae77fb25e3567566eee600ccbcae9aeb89722990ccae0e84e805" },
-    Pack { code: "chi_sim", name: "Chinese (Simplified)", size: 1_718_768, sha256: "b8a23f10c7de500891eb458a8adc9cc58ab7f242f08b7d149f5e9aea4ad5db7c" },
-    Pack { code: "jpn", name: "Japanese", size: 2_030_256, sha256: "2b63ebfbf1484de4a08ce53b29ef98a1c17658a93cbd38acb665d7d316d0be88" },
-    Pack { code: "kor", name: "Korean", size: 1_572_336, sha256: "78c21276ab14c9bb734d83be1055d9fe5469a4e7e977c51ad385be5737e61126" },
-    Pack { code: "vie", name: "Vietnamese", size: 1_423_003, sha256: "2284f610f262a1b19ec8df9f196b9ff6ce38ddb4a66329e998941df4b8961c8d" },
-    Pack { code: "tha", name: "Thai", size: 896_631, sha256: "4550a5505184d1b79cf10416d5b19e643001d95411d5e717954dd26feef3ae74" },
+    Pack {
+        code: "fra",
+        name: "French",
+        size: 707_406,
+        sha256: "d611139672b3752c7097e671e4a1d9209dfd37f2aeb081ef6487fba3351e9255",
+    },
+    Pack {
+        code: "spa",
+        name: "Spanish",
+        size: 2_100_190,
+        sha256: "40be52f97b5d4eb7460073dc1f94cd546b27150333c0bf854ed7e7132db6bceb",
+    },
+    Pack {
+        code: "deu",
+        name: "German",
+        size: 1_333_102,
+        sha256: "306c4280d0cbed46fbff727486bd43b92730181bae80f56941a091f363bdf28b",
+    },
+    Pack {
+        code: "ita",
+        name: "Italian",
+        size: 1_660_998,
+        sha256: "f702fcfad297ce028ede3626d1467b67939f23ff23595f9badd54681cf25a4d3",
+    },
+    Pack {
+        code: "por",
+        name: "Portuguese",
+        size: 1_392_239,
+        sha256: "dacebc1386ddaaf8389f81094236cca0d690897cde693d48cbdaa881c86e2b4c",
+    },
+    Pack {
+        code: "nld",
+        name: "Dutch",
+        size: 3_005_696,
+        sha256: "a2d904b6ddc4feb0d31ecfcd7361a554102e7aa2e278c54f4fc029e0d0815571",
+    },
+    Pack {
+        code: "pol",
+        name: "Polish",
+        size: 2_642_356,
+        sha256: "a20fdec4ff99d8f8e84c708da3e42a4e935c26863055a0ed88aef5c66a59b91b",
+    },
+    Pack {
+        code: "rus",
+        name: "Russian",
+        size: 2_679_598,
+        sha256: "f51f5edc992249ff9b70a227b22f242dfa47b2b1bbc7ae0ea74908640c101f6a",
+    },
+    Pack {
+        code: "ukr",
+        name: "Ukrainian",
+        size: 2_114_206,
+        sha256: "ea2789a0ad99ff84bfd252a7410a1e8661a7bc5acaa41573d23b54b71446aa4c",
+    },
+    Pack {
+        code: "pan",
+        name: "Punjabi (Gurmukhi)",
+        size: 1_396_216,
+        sha256: "10624ae040eb967316fcb1a1843421786a48542b22ef2fdd50afc00de58d27b5",
+    },
+    Pack {
+        code: "hin",
+        name: "Hindi",
+        size: 1_389_692,
+        sha256: "f3b6a0d320df38d886178cdd727b90dbf9df3db053adb32bd9cf73f0463cda07",
+    },
+    Pack {
+        code: "ara",
+        name: "Arabic",
+        size: 1_661_906,
+        sha256: "f4746c44b02342dd5b3d4f0198000f47d7c49f1a229e63e0f436c0592dcd9639",
+    },
+    Pack {
+        code: "heb",
+        name: "Hebrew",
+        size: 580_576,
+        sha256: "9c70b524200dae77fb25e3567566eee600ccbcae9aeb89722990ccae0e84e805",
+    },
+    Pack {
+        code: "chi_sim",
+        name: "Chinese (Simplified)",
+        size: 1_718_768,
+        sha256: "b8a23f10c7de500891eb458a8adc9cc58ab7f242f08b7d149f5e9aea4ad5db7c",
+    },
+    Pack {
+        code: "jpn",
+        name: "Japanese",
+        size: 2_030_256,
+        sha256: "2b63ebfbf1484de4a08ce53b29ef98a1c17658a93cbd38acb665d7d316d0be88",
+    },
+    Pack {
+        code: "kor",
+        name: "Korean",
+        size: 1_572_336,
+        sha256: "78c21276ab14c9bb734d83be1055d9fe5469a4e7e977c51ad385be5737e61126",
+    },
+    Pack {
+        code: "vie",
+        name: "Vietnamese",
+        size: 1_423_003,
+        sha256: "2284f610f262a1b19ec8df9f196b9ff6ce38ddb4a66329e998941df4b8961c8d",
+    },
+    Pack {
+        code: "tha",
+        name: "Thai",
+        size: 896_631,
+        sha256: "4550a5505184d1b79cf10416d5b19e643001d95411d5e717954dd26feef3ae74",
+    },
 ];
 
 #[derive(serde::Serialize)]
@@ -74,7 +164,10 @@ fn file(dir: &Path, p: &Pack) -> PathBuf {
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
-    Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 
 /// Bytes are the pinned pack: exact size and hash.
@@ -140,7 +233,10 @@ pub async fn download(client: &reqwest::Client, dir: &Path, p: &Pack) -> Result<
         ));
     }
     if resp.content_length().is_some_and(|n| n != p.size) {
-        return Err(format!("the {} pack has an unexpected size - not saved", p.name));
+        return Err(format!(
+            "the {} pack has an unexpected size - not saved",
+            p.name
+        ));
     }
     let bytes = resp
         .bytes()

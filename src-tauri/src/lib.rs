@@ -134,7 +134,10 @@ fn ocr_lang_remove(app: AppHandle, code: String) -> CmdResult<()> {
 /// The timestamp services the user can pick from: (id, name).
 #[tauri::command]
 fn timestamp_services() -> Vec<(&'static str, &'static str)> {
-    tsa::AUTHORITIES.iter().map(|(id, name, _)| (*id, *name)).collect()
+    tsa::AUTHORITIES
+        .iter()
+        .map(|(id, name, _)| (*id, *name))
+        .collect()
 }
 
 /// Carry an RFC 3161 request (raw body) to the service named in `x-tsa`; the
@@ -150,7 +153,9 @@ async fn timestamp_request(request: Request<'_>, net: State<'_, Net>) -> CmdResu
     let InvokeBody::Raw(data) = request.body() else {
         return Err("expected a raw timestamp request".into());
     };
-    tsa::request(&net.0, &id, data.clone()).await.map(Response::new)
+    tsa::request(&net.0, &id, data.clone())
+        .await
+        .map(Response::new)
 }
 
 // ---------- the optional DeskLab account (all calls go through account.rs) ----------

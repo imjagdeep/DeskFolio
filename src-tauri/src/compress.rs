@@ -153,9 +153,16 @@ fn is_image(s: &Stream) -> bool {
 enum Kind {
     /// 1 (grey) or 3 (RGB) channels; `keep_cs` is the original colour space when
     /// it carries a profile (ICCBased) and must stay on the re-encoded image.
-    Plain { channels: u8, keep_cs: Option<Object> },
+    Plain {
+        channels: u8,
+        keep_cs: Option<Object>,
+    },
     /// Palette: base RGB/grey colours, `hival + 1` entries of `base` channels each.
-    Indexed { base: u8, entries: usize, lut: Vec<u8> },
+    Indexed {
+        base: u8,
+        entries: usize,
+        lut: Vec<u8>,
+    },
     /// 4-channel CMYK (Device or ICC): shrink only, stays lossless.
     Cmyk,
     Other,
@@ -202,19 +209,27 @@ fn classify(doc: &Document, s: &Stream) -> Kind {
             };
             let lut = match resolve(doc, &a[3]) {
                 Object::String(b, _) => b.clone(),
-                Object::Stream(st) => st.decompressed_content().unwrap_or_else(|_| st.content.clone()),
+                Object::Stream(st) => st
+                    .decompressed_content()
+                    .unwrap_or_else(|_| st.content.clone()),
                 _ => return Kind::Other,
             };
             if !(0..=255).contains(&hival) || lut.len() < (hival as usize + 1) * base as usize {
                 return Kind::Other;
             }
-            return Kind::Indexed { base, entries: hival as usize + 1, lut };
+            return Kind::Indexed {
+                base,
+                entries: hival as usize + 1,
+                lut,
+            };
         }
     }
     match base_channels(doc, cs) {
         Some(c @ (1 | 3)) => Kind::Plain {
             channels: c,
-            keep_cs: matches!(cs, Object::Array(_)).then(|| s.dict.get(b"ColorSpace").cloned().ok()).flatten(),
+            keep_cs: matches!(cs, Object::Array(_))
+                .then(|| s.dict.get(b"ColorSpace").cloned().ok())
+                .flatten(),
         },
         Some(4) => Kind::Cmyk,
         _ => Kind::Other,
@@ -233,9 +248,21 @@ fn unpredict_png(data: &[u8], row: usize, bpp: usize, rows: usize) -> Result<Vec
         let ft = data[r * stride];
         let src = &data[r * stride + 1..r * stride + 1 + row];
         for i in 0..row {
-            let a = if i >= bpp { out[r * row + i - bpp] as i32 } else { 0 };
-            let b = if r > 0 { out[(r - 1) * row + i] as i32 } else { 0 };
-            let c = if r > 0 && i >= bpp { out[(r - 1) * row + i - bpp] as i32 } else { 0 };
+            let a = if i >= bpp {
+                out[r * row + i - bpp] as i32
+            } else {
+                0
+            };
+            let b = if r > 0 {
+                out[(r - 1) * row + i] as i32
+            } else {
+                0
+            };
+            let c = if r > 0 && i >= bpp {
+                out[(r - 1) * row + i - bpp] as i32
+            } else {
+                0
+            };
             let pred = match ft {
                 0 => 0,
                 1 => a,
@@ -261,7 +288,13 @@ fn unpredict_png(data: &[u8], row: usize, bpp: usize, rows: usize) -> Result<Vec
 }
 
 /// A Flate (or unfiltered) image's samples, predictor undone, 16-bit cut to 8.
-fn flate_samples(s: &mut Stream, w: u32, h: u32, channels: usize, filtered: bool) -> Result<Option<Vec<u8>>, String> {
+fn flate_samples(
+    s: &mut Stream,
+    w: u32,
+    h: u32,
+    channels: usize,
+    filtered: bool,
+) -> Result<Option<Vec<u8>>, String> {
     let bpc = int(s, b"BitsPerComponent").unwrap_or(0);
     if bpc != 8 && bpc != 16 {
         return Ok(None);
@@ -269,7 +302,11 @@ fn flate_samples(s: &mut Stream, w: u32, h: u32, channels: usize, filtered: bool
     let bytes_per_sample = (bpc / 8) as usize;
     // Decode only the Flate layer (DecodeParms set aside), then undo the predictor here.
     let parms = s.dict.remove(b"DecodeParms");
-    let raw = if filtered { s.decompressed_content() } else { Ok(s.content.clone()) };
+    let raw = if filtered {
+        s.decompressed_content()
+    } else {
+        Ok(s.content.clone())
+    };
     if let Some(p) = parms.clone() {
         s.dict.set("DecodeParms", p);
     }
@@ -279,13 +316,33 @@ fn flate_samples(s: &mut Stream, w: u32, h: u32, channels: usize, filtered: bool
         None => raw,
         Some(Err(_)) => return Ok(None), // parameters as a reference or array: leave alone
         Some(Ok(p)) => {
-            let pred = p.get(b"Predictor").ok().and_then(|o| o.as_i64().ok()).unwrap_or(1);
-            let colors = p.get(b"Colors").ok().and_then(|o| o.as_i64().ok()).unwrap_or(1);
-            let pbpc = p.get(b"BitsPerComponent").ok().and_then(|o| o.as_i64().ok()).unwrap_or(8);
-            let cols = p.get(b"Columns").ok().and_then(|o| o.as_i64().ok()).unwrap_or(1);
+            let pred = p
+                .get(b"Predictor")
+                .ok()
+                .and_then(|o| o.as_i64().ok())
+                .unwrap_or(1);
+            let colors = p
+                .get(b"Colors")
+                .ok()
+                .and_then(|o| o.as_i64().ok())
+                .unwrap_or(1);
+            let pbpc = p
+                .get(b"BitsPerComponent")
+                .ok()
+                .and_then(|o| o.as_i64().ok())
+                .unwrap_or(8);
+            let cols = p
+                .get(b"Columns")
+                .ok()
+                .and_then(|o| o.as_i64().ok())
+                .unwrap_or(1);
             if pred == 1 {
                 raw
-            } else if (10..=15).contains(&pred) && colors as usize == channels && pbpc == bpc && cols as u32 == w {
+            } else if (10..=15).contains(&pred)
+                && colors as usize == channels
+                && pbpc == bpc
+                && cols as u32 == w
+            {
                 unpredict_png(&raw, row, channels * bytes_per_sample, h as usize)?
             } else {
                 return Ok(None); // TIFF predictor or odd parameters: leave alone
@@ -337,11 +394,15 @@ fn recompress(s: &mut Stream, kind: Kind, max_side: u32, quality: u8) -> Result<
         Kind::Other => Ok(false),
         Kind::Cmyk => {
             // Shrink oversized CMYK Flate images, losslessly; never convert colours.
-            let Some(filtered) = flate else { return Ok(false) };
+            let Some(filtered) = flate else {
+                return Ok(false);
+            };
             if w.max(h) <= max_side {
                 return Ok(false);
             }
-            let Some(px) = flate_samples(s, w, h, 4, filtered)? else { return Ok(false) };
+            let Some(px) = flate_samples(s, w, h, 4, filtered)? else {
+                return Ok(false);
+            };
             let (nw, nh) = scaled(w, h, max_side);
             let small = resize_channels(&px, w, h, 4, nw, nh);
             s.dict.remove(b"DecodeParms");
@@ -354,11 +415,15 @@ fn recompress(s: &mut Stream, kind: Kind, max_side: u32, quality: u8) -> Result<
             Ok(true)
         }
         Kind::Indexed { base, entries, lut } => {
-            let Some(filtered) = flate else { return Ok(false) };
+            let Some(filtered) = flate else {
+                return Ok(false);
+            };
             if int(s, b"BitsPerComponent") != Some(8) || entries < PHOTO_PALETTE {
                 return Ok(false);
             }
-            let Some(idx) = flate_samples(s, w, h, 1, filtered)? else { return Ok(false) };
+            let Some(idx) = flate_samples(s, w, h, 1, filtered)? else {
+                return Ok(false);
+            };
             let b = base as usize;
             let mut px = Vec::with_capacity(idx.len() * b);
             for &i in &idx {
@@ -393,7 +458,10 @@ fn recompress(s: &mut Stream, kind: Kind, max_side: u32, quality: u8) -> Result<
 
 fn scaled(w: u32, h: u32, max_side: u32) -> (u32, u32) {
     let scale = max_side as f64 / w.max(h) as f64;
-    (((w as f64 * scale).round() as u32).max(1), ((h as f64 * scale).round() as u32).max(1))
+    (
+        ((w as f64 * scale).round() as u32).max(1),
+        ((h as f64 * scale).round() as u32).max(1),
+    )
 }
 
 /// Area-average resize of interleaved 8-bit samples (any channel count).
@@ -421,9 +489,13 @@ fn resize_channels(px: &[u8], w: u32, h: u32, ch: usize, nw: u32, nh: u32) -> Ve
 
 fn to_image(px: Vec<u8>, w: u32, h: u32, channels: u8) -> Result<DynamicImage, String> {
     Ok(if channels == 1 {
-        DynamicImage::ImageLuma8(ImageBuffer::<Luma<u8>, _>::from_raw(w, h, px).ok_or("bad grey image")?)
+        DynamicImage::ImageLuma8(
+            ImageBuffer::<Luma<u8>, _>::from_raw(w, h, px).ok_or("bad grey image")?,
+        )
     } else {
-        DynamicImage::ImageRgb8(ImageBuffer::<Rgb<u8>, _>::from_raw(w, h, px).ok_or("bad RGB image")?)
+        DynamicImage::ImageRgb8(
+            ImageBuffer::<Rgb<u8>, _>::from_raw(w, h, px).ok_or("bad RGB image")?,
+        )
     })
 }
 
@@ -466,7 +538,11 @@ fn encode_jpeg(
     s.dict.set(
         "ColorSpace",
         keep_cs.unwrap_or_else(|| {
-            Object::Name(if channels == 1 { b"DeviceGray".to_vec() } else { b"DeviceRGB".to_vec() })
+            Object::Name(if channels == 1 {
+                b"DeviceGray".to_vec()
+            } else {
+                b"DeviceRGB".to_vec()
+            })
         }),
     );
     s.set_content(jpeg);
@@ -486,7 +562,9 @@ fn dedupe_images(doc: &mut Document) {
     let mut ids: Vec<_> = doc.objects.keys().copied().collect();
     ids.sort();
     for id in ids {
-        let Some(Object::Stream(s)) = doc.objects.get(&id) else { continue };
+        let Some(Object::Stream(s)) = doc.objects.get(&id) else {
+            continue;
+        };
         if !is_image(s) {
             continue;
         }
@@ -496,7 +574,9 @@ fn dedupe_images(doc: &mut Document) {
         let key = hasher.finish();
         let same = first.get(&key).and_then(|cands| {
             cands.iter().copied().find(|c| match doc.objects.get(c) {
-                Some(Object::Stream(o)) => o.content == s.content && format!("{:?}", o.dict) == format!("{:?}", s.dict),
+                Some(Object::Stream(o)) => {
+                    o.content == s.content && format!("{:?}", o.dict) == format!("{:?}", s.dict)
+                }
                 _ => false,
             })
         });
@@ -709,8 +789,16 @@ mod tests {
             let ft = (r % 5) as u8;
             data.push(ft);
             for i in 0..w * 3 {
-                let a = if i >= 3 { px[r * w * 3 + i - 3] as i32 } else { 0 };
-                let b = if r > 0 { px[(r - 1) * w * 3 + i] as i32 } else { 0 };
+                let a = if i >= 3 {
+                    px[r * w * 3 + i - 3] as i32
+                } else {
+                    0
+                };
+                let b = if r > 0 {
+                    px[(r - 1) * w * 3 + i] as i32
+                } else {
+                    0
+                };
                 let c = if r > 0 && i >= 3 {
                     px[(r - 1) * w * 3 + i - 3] as i32
                 } else {
