@@ -11,7 +11,7 @@ import { flushPending, useDoc, type OpenDoc } from "../lib/doc";
 import type { FieldKind } from "../lib/sign/envelope";
 import { sendRequest, type DraftField, type Person } from "../lib/sign/requests";
 import { toast, toastError } from "../lib/store";
-import { markupState } from "../workspace/markup";
+import { markupState, setMarkup } from "../workspace/markup";
 import { go } from "../workspace/route";
 
 const COLORS = ["#2563eb", "#db2777", "#16a34a", "#ea580c", "#7c3aed", "#0891b2", "#ca8a04", "#dc2626"];
@@ -95,10 +95,20 @@ export function RequestSign() {
       </div>
     );
   }
-  return <Composer key={doc.id} doc={doc} />;
+  return <Composer key={doc.id} doc={doc} accountEmail={account.email ?? ""} />;
 }
 
-function Composer({ doc }: { doc: OpenDoc }) {
+/** "jordan.lee@example.com" -> "Jordan Lee": a starting guess for the sender's name. */
+export function nameFromEmail(email: string): string {
+  const local = email.split("@")[0] ?? "";
+  return local
+    .split(/[._-]+/)
+    .filter((w) => /^[a-z]+$/i.test(w))
+    .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function Composer({ doc, accountEmail }: { doc: OpenDoc; accountEmail: string }) {
   const [people, setPeople] = useState<Person[]>([{ local: nextId("p"), name: "", email: "", role: "signer", position: 1 }]);
   const [fields, setFields] = useState<Placed[]>([]);
   const [who, setWho] = useState<string>(people[0].local);
@@ -106,6 +116,8 @@ function Composer({ doc }: { doc: OpenDoc }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [title, setTitle] = useState(doc.name.replace(/\.pdf$/i, ""));
   const [message, setMessage] = useState("");
+  // Signers see this name ("Jordan Lee asks you to sign"); kept as your author name.
+  const [fromName, setFromName] = useState(() => markupState().author.trim() || nameFromEmail(accountEmail));
   const [sequential, setSequential] = useState(true);
   const [reminderDays, setReminderDays] = useState(3);
   const [expiresDays, setExpiresDays] = useState(30);
@@ -226,6 +238,7 @@ function Composer({ doc }: { doc: OpenDoc }) {
   const problems = useMemo(() => {
     const out: string[] = [];
     if (!title.trim()) out.push("Give the request a title.");
+    if (!fromName.trim()) out.push("Add your name, so people know who's asking.");
     if (!signers.length) out.push("Add someone who signs.");
     for (const p of people) {
       if (!p.name.trim()) out.push("Every person needs a name.");
@@ -235,7 +248,7 @@ function Composer({ doc }: { doc: OpenDoc }) {
     if (new Set(emails).size !== emails.length) out.push("Someone is in the list twice.");
     for (const s of signers) if (!fields.some((f) => f.person === s.local)) out.push(`Place at least one field for ${s.name.trim() || "each signer"}.`);
     return [...new Set(out)];
-  }, [title, people, signers, fields]);
+  }, [title, fromName, people, signers, fields]);
 
   const send = async () => {
     const names = signers.map((s) => s.name.trim()).join(", ");
@@ -247,12 +260,13 @@ function Composer({ doc }: { doc: OpenDoc }) {
     });
     if (!ok) return;
     setBusy(true);
+    if (fromName.trim() !== markupState().author.trim()) setMarkup({ author: fromName.trim() });
     try {
       await flushPending();
       const r = await sendRequest({
         pdf: doc.bytes,
         title: title.trim(),
-        ownerName: markupState().author.trim(),
+        ownerName: fromName.trim(),
         message: message.trim(),
         sequential,
         reminderDays,
@@ -372,6 +386,10 @@ function Composer({ doc }: { doc: OpenDoc }) {
           <section className="card">
             <h2>Message</h2>
             <label className="field">
+              <span>Your name</span>
+              <input value={fromName} maxLength={80} placeholder="Shown to the people who sign" onChange={(e) => setFromName(e.target.value)} />
+            </label>
+            <label className="field">
               <span>Title</span>
               <input value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} />
             </label>
@@ -402,10 +420,9 @@ function Composer({ doc }: { doc: OpenDoc }) {
               </label>
             </div>
             <p className="muted small">
-              Shown as from <b>{markupState().author.trim() || "DeskLab user"}</b> (set your name in Settings). Replies go to your DeskLab email.
+              People see "{fromName.trim() || "…"} asks you to sign". Replies go to {accountEmail || "your DeskLab email"}.
             </p>
           </section>
-          {problems.length > 0 && <p className="muted small">{problems[0]}</p>}
         </aside>
 
         <div className="rs-pages" ref={pagesRef} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
@@ -435,6 +452,17 @@ function Composer({ doc }: { doc: OpenDoc }) {
             </div>
           ))}
         </div>
+      </div>
+      {/* Always in view, wherever you are on the pages: what's missing, or who gets it. */}
+      <div className="rs-sendbar">
+        <span className={problems.length ? "rs-sendbar-text warn" : "rs-sendbar-text"}>
+          {problems.length
+            ? `${problems[0]}${problems.length > 1 ? ` (+${problems.length - 1} more)` : ""}`
+            : `Ready: ${ordered.map((p) => p.name.trim()).join(sequential && ordered.length > 1 ? ", then " : " and ")} ${ordered.length === 1 ? "gets" : "get"} a private link by email.`}
+        </span>
+        <button className="primary" disabled={busy || problems.length > 0} onClick={() => void send()}>
+          {busy ? "Sending…" : "Send for signature"}
+        </button>
       </div>
     </div>
   );

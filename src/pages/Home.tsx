@@ -15,6 +15,7 @@ import {
 import type { Page } from "../workspace/pages";
 import { activate, forgetRecent, openDialog, openPath, useRecent, useTabs } from "../lib/doc";
 import { fileName, parentDir } from "../lib/format";
+import { dismissNews, newsText, openAgreement, useAgreementNews } from "../lib/sign/watch";
 
 type Tile = { page: Page; title: string; text: string; Icon: IconType; needsDoc?: boolean };
 const TILES: Tile[] = [
@@ -33,6 +34,7 @@ const TILES: Tile[] = [
 export function Home({ onNavigate }: { onNavigate: (p: Page) => void; onOpened: () => void }) {
   const recent = useRecent();
   const { docs } = useTabs();
+  const news = useAgreementNews();
 
   // Tools that work on a document ask for one first, then open in its tab.
   const startTool = async (t: Tile) => {
@@ -55,6 +57,39 @@ export function Home({ onNavigate }: { onNavigate: (p: Page) => void; onOpened: 
           <span className="muted small">or drop them anywhere on this window · Ctrl+O</span>
         </button>
       </section>
+
+      {news.length > 0 && (
+        <section className="card home-news" aria-label="Agreements news">
+          <div className="home-news-head">
+            <InboxIcon size={18} />
+            <strong>Agreements</strong>
+            <button className="link" onClick={() => dismissNews()}>
+              Dismiss all
+            </button>
+          </div>
+          <ul>
+            {news.map((n) => (
+              <li key={n.id} className={`home-news-item ${n.kind}`}>
+                <span>{newsText(n)}</span>
+                <span className="home-news-actions">
+                  <button
+                    className={n.kind === "completed" ? "primary" : undefined}
+                    onClick={() => {
+                      openAgreement(n.id);
+                      onNavigate("agreements");
+                    }}
+                  >
+                    {n.kind === "completed" ? "Get the signed copy" : "See it"}
+                  </button>
+                  <button className="link" onClick={() => dismissNews(n.id)} aria-label={`Dismiss: ${n.title}`}>
+                    Dismiss
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <h3>Tools</h3>
       <div className="tool-tiles">

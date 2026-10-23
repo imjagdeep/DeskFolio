@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../components/Common";
 import { refreshAccount, useAccount } from "../account/account";
 import { openPath, saveBytes } from "../lib/doc";
-import { cancelRequest, deleteRequest, dueNow, finalCopy, finishHere, keyFor, listRequests, requestDetail, resend, type RequestEvent, type SignRequest } from "../lib/sign/requests";
+import { cancelRequest, deleteRequest, dueNow, finalCopy, finishHere, keyFor, keyFromLink, listRequests, requestDetail, resend, type RequestEvent, type SignRequest } from "../lib/sign/requests";
+import { checkAgreements, dismissNews, takeWantedAgreement, useAgreementNews } from "../lib/sign/watch";
 import { toast, toastError } from "../lib/store";
 import { markupState } from "../workspace/markup";
 import { go } from "../workspace/route";
@@ -37,14 +38,22 @@ const EVENT: Record<string, string> = {
 };
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "");
 const tone = (s: SignRequest["status"]) => (s === "completed" ? "ok" : s === "sent" || s === "signed" ? "wait" : s === "draft" ? "" : "bad");
+/** "1 of 2 signed" */
+function progress(r: SignRequest): string {
+  const signers = r.recipients.filter((p) => p.role === "signer");
+  return `${signers.filter((p) => p.status === "signed").length} of ${signers.length} signed`;
+}
 
 export function Agreements() {
   const account = useAccount();
   const [list, setList] = useState<SignRequest[] | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
+  // Coming from a Home card: that request opens straight away.
+  const [open, setOpen] = useState<string | null>(() => takeWantedAgreement());
+  const news = useAgreementNews();
   const reload = useCallback(() => {
-    listRequests()
-      .then(setList)
+    // Same call as the background check, so news shows here too.
+    checkAgreements()
+      .then((l) => (l ? setList(l) : listRequests().then(setList)))
       .catch((e: unknown) => {
         toastError(e);
         setList([]);
@@ -55,6 +64,16 @@ export function Agreements() {
       .then((s) => (s.signed_in ? reload() : setList([])))
       .catch(() => setList([]));
   }, [reload]);
+  // While this page is open, follow it every minute.
+  useEffect(() => {
+    if (!account?.signed_in) return;
+    const t = window.setInterval(reload, 60_000);
+    return () => window.clearInterval(t);
+  }, [account?.signed_in, reload]);
+  // Opening a request you have news about counts as having seen it.
+  useEffect(() => {
+    if (open && news.some((n) => n.id === open)) dismissNews(open);
+  }, [open, news]);
 
   if (!account?.signed_in) {
     return (
@@ -91,7 +110,11 @@ export function Agreements() {
                   {when(r.sentAt ?? r.createdAt)} · {r.recipients.filter((x) => x.role === "signer").map((x) => x.name).join(", ")}
                 </span>
               </span>
-              <span className={`ag-status ${tone(r.status)}`}>{STATUS[r.status]}</span>
+              <span className="ag-right">
+                {news.some((n) => n.id === r.id) && <span className="ag-new">New</span>}
+                {(r.status === "sent" || r.status === "signed") && <span className="muted small">{progress(r)}</span>}
+                <span className={`ag-status ${tone(r.status)}`}>{STATUS[r.status]}</span>
+              </span>
             </button>
             {open === r.id && <Detail req={r} onChange={reload} />}
           </div>
@@ -154,7 +177,7 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
       <div className="row">
         {req.status === "completed" && !req.filesDeleted && hasKey && (
           <button className="primary" disabled={busy} onClick={() => void run(async () => saveCopy(await finalCopy(req)))}>
-            Save the signed copy…
+            Save and open the signed copy…
           </button>
         )}
         {req.status === "signed" && hasKey && (
@@ -213,7 +236,7 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
           </button>
         )}
       </div>
-      {!hasKey && <p className="muted small">This request was sent from another computer (or this app's data was reset), so its files can't be opened here. The links in the emails still work.</p>}
+      {!hasKey && !req.filesDeleted && <KeyFromEmail req={req} onDone={onChange} />}
       {req.status === "completed" && req.filesDeleted && <p className="muted small">The files were deleted 30 days after completion; use the copy you saved.</p>}
 
       <details className="ag-history">
@@ -232,6 +255,41 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
           </ol>
         )}
       </details>
+    </div>
+  );
+}
+
+/** No key on this computer: take it from the link in any of this request's emails. */
+function KeyFromEmail({ req, onDone }: { req: SignRequest; onDone: () => void }) {
+  const [link, setLink] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const use = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await keyFromLink(req, link);
+      toast(req.status === "completed" ? "Found it. You can open the signed copy now." : "Found it. This request's files open here again.");
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="ag-key">
+      <p className="small">
+        This computer doesn't have the key for this request (it was sent from another computer, or DeskFolio's data was reset), so its files can't be opened here
+        yet. Paste the link from {req.status === "completed" ? "the \u201cCompleted\u201d email" : "an email about this request"} and DeskFolio takes the key from it.
+      </p>
+      <div className="row">
+        <input value={link} placeholder="https://sign.getdesklab.com/s/…" aria-label="Link from the email" onChange={(e) => setLink(e.target.value)} />
+        <button className="primary" disabled={busy || !link.includes("#")} onClick={() => void use()}>
+          {busy ? "Checking…" : "Use this link"}
+        </button>
+      </div>
+      {error && <p className="small error-text">{error}</p>}
     </div>
   );
 }

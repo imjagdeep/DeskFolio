@@ -2,6 +2,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect } from "react";
+import { refreshAccount, useAccount } from "./account/account";
 import { useAppMenus } from "./appMenu";
 import logo from "./assets/logo.png";
 import { PasswordDialog, Toasts } from "./components/Common";
@@ -10,6 +11,7 @@ import { UpdateBanner } from "./components/UpdateBanner";
 import { api } from "./lib/api";
 import { okToQuit, openPath, useDoc } from "./lib/doc";
 import { refreshAppInfo, toast, toastError, useAppInfo, useAutoUpdate, useTheme } from "./lib/store";
+import { agreementsOnFocus, watchAgreements } from "./lib/sign/watch";
 import { checkAndDownload, dailyCheckDue } from "./lib/updates";
 import { ShellDialogs } from "./shell/Dialogs";
 import { MenuBar } from "./shell/MenuBar";
@@ -25,6 +27,17 @@ export default function App() {
   const doc = useDoc();
   const theme = useTheme();
   const autoUpdate = useAutoUpdate();
+  const account = useAccount();
+
+  // Requests sent for signature: news when someone signs or a request completes.
+  useEffect(() => {
+    refreshAccount().catch(() => undefined);
+    window.addEventListener("focus", agreementsOnFocus);
+    return () => window.removeEventListener("focus", agreementsOnFocus);
+  }, []);
+  useEffect(() => {
+    watchAgreements(!!account?.signed_in);
+  }, [account?.signed_in]);
 
   useEffect(() => {
     void refreshAppInfo();
