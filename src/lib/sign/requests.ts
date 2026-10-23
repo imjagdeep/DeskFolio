@@ -109,6 +109,23 @@ export function keyFor(id: string): Uint8Array | null {
   return t ? keyFromText(t) : null;
 }
 
+/**
+ * The key from a DeskLab Sign link (the part after #), for a request whose key
+ * isn't on this computer any more (app data reset, another PC). Kept only if it
+ * really opens this request's files.
+ */
+export async function keyFromLink(req: SignRequest, link: string): Promise<void> {
+  const key = keyFromText(decodeURIComponent(link.trim().split("#")[1] ?? "").trim());
+  if (!key) throw new Error("That isn't a DeskLab Sign link. Copy the whole link from the email, including the part after #.");
+  const file = req.status === "completed" && !req.filesDeleted ? "final" : "document";
+  try {
+    await unseal(key, await download(`/v1/envelopes/${req.id}/files/${file}`));
+  } catch {
+    throw new Error("That link belongs to another request, or it was cut short. Use the link from this request's email.");
+  }
+  keepKey(req.id, key);
+}
+
 /** Who may sign now: same rule as the server (lowest open position, or everyone). */
 export function dueNow(recipients: { id: string; role: string; position: number; status: string }[], sequential: boolean) {
   const open = recipients.filter((r) => r.role === "signer" && r.status !== "signed" && r.status !== "declined");

@@ -375,3 +375,25 @@ button.danger-fill:hover:not(:disabled) { background: #b71c1c; filter: none; }
 .tool-strip.wide .strip-group { align-items: stretch; }
 .tool-strip.wide .strip-btn { width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 0 9px; }
 .strip-label { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Agreements news on Home: someone signed, a request completed */
+.home-news { margin: 0 0 18px; padding: 12px 16px; }
+.home-news-head { display: flex; align-items: center; gap: 8px; }
+.home-news-head .link { margin-left: auto; }
+.home-news ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.home-news-item { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px; background: var(--hover); font-size: 13px; }
+.home-news-item.completed { background: var(--green-soft); }
+.home-news-item.declined, .home-news-item.expired { background: color-mix(in srgb, var(--red) 10%, transparent); }
+.home-news-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: none; }
+
+/* Agreements list: progress and "New" next to the status */
+.ag-right { display: flex; align-items: center; gap: 10px; flex: none; }
+.ag-new { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--accent); color: var(--accent-text, #fff); }
+.ag-key { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--hover); }
+.ag-key .row { display: flex; gap: 8px; }
+.ag-key input { flex: 1; min-width: 0; }
+
+/* Request signatures: the send bar stays in view */
+.rs-sendbar { position: sticky; bottom: 0; z-index: 3; display: flex; align-items: center; gap: 14px; margin-top: 14px; padding: 10px 14px; border-radius: 10px; background: var(--window, var(--bg)); box-shadow: 0 -1px 0 var(--sep, rgba(0,0,0,.08)), 0 6px 24px rgba(0, 0, 0, 0.12); }
+.rs-sendbar-text { flex: 1; min-width: 0; font-size: 13px; }
+.rs-sendbar-text.warn { color: var(--orange); }
