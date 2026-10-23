@@ -8,6 +8,8 @@ import { fillForm, listFields, type FormField } from "../lib/pdf/forms";
 import { applyStamps, unsupportedChars, type Stamp } from "../lib/pdf/stamp";
 import { renderPage, type PDFDocumentProxy } from "../lib/pdfjs";
 import { toast, toastError } from "../lib/store";
+import { setOwnTool } from "../workspace/markup";
+import { go } from "../workspace/route";
 
 /** A placed item, in page points as seen on screen (top-left origin). */
 interface Placed {
@@ -236,6 +238,12 @@ export function Sign() {
             </span>
           ))}
           <button onClick={() => setPad(true)}>{sigs.length ? "New signature…" : "Create signature…"}</button>
+          <button
+            title="Your handwritten signature plus a digital signature from your digital ID, which proves the PDF wasn't changed afterwards. Draw the box on the page, then pick the ID."
+            onClick={() => (go("view"), setOwnTool("digisign"))}
+          >
+            Sign with my ID…
+          </button>
         </div>
         {fields.length > 0 && (
           <label className="check-row inline">

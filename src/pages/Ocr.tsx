@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Empty, PageHeader } from "../components/Common";
 import { OcrIcon } from "../components/Icons";
+import { OcrLanguages } from "../components/OcrLanguages";
 import { applyEdit, openDialog, useDoc } from "../lib/doc";
 import { plural } from "../lib/format";
 import { ocrPdf } from "../lib/ocr";
@@ -76,10 +77,8 @@ export function Ocr() {
           <input type="checkbox" checked={onlyWithoutText} disabled={busy} onChange={(e) => setOnlyWithoutText(e.target.checked)} />
           <span>Only pages without text (skip pages that are already searchable)</span>
         </label>
-        <p className="muted small">
-          Language: English (built in, works offline). Reading takes a few seconds per page. Handwriting and very faint scans may not
-          be read well.
-        </p>
+        <OcrLanguages disabled={busy} />
+        <p className="muted small">Reading takes a few seconds per page. Handwriting and very faint scans may not be read well.</p>
       </div>
       <div className="action-bar">
         <span className="muted">{busy ? status : "Nothing is saved until you choose Save as… (top right)."}</span>

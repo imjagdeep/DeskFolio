@@ -30,14 +30,14 @@ Every change can be undone while the file is open, and nothing is written to dis
 
 ## Honest limits
 
-- Digital signatures have no trusted timestamp yet (the time shown is the signer's own clock), and the certificate chain isn't checked against a trust list: DeskFolio trusts your own IDs and those you mark as trusted. A self-made ID shows as "not verified" in other readers until they choose to trust it; a green check everywhere needs an ID from a provider on Adobe's trusted list. Password-protected PDFs can't be signed yet.
+- Digital signatures can carry a trusted timestamp from DigiCert, Sectigo or FreeTSA (off by default; it needs the internet and sends only a fingerprint of the signature, never the document). Without one, the time shown is the signer's own clock. The certificate chain isn't checked against a trust list: DeskFolio trusts your own IDs and those you mark as trusted. A self-made ID shows as "not verified" in other readers until they choose to trust it; a green check everywhere needs an ID from a provider on Adobe's trusted list. Password-protected PDFs can't be signed yet.
 - Send for signature uses DeskLab's server (getdesklab.com) to deliver links and keep the signing record; documents are encrypted before upload and their files are deleted 30 days after a request ends. Signatures are simple electronic signatures with an audit trail, not certificate signatures; they don't suit documents that need witnesses, a notary or a qualified signature.
-- Drawn and typed signatures (Fill & Sign) are visual, like signing on paper.
+- Drawn and typed signatures placed with Fill & Sign are visual, like signing on paper. To make one tamper-evident, use **Sign with my ID**: it shows your handwritten signature and adds a digital signature from your digital ID in one step.
 - Added text uses a built-in Latin font for now; other scripts get a clear message instead of broken text.
-- Compress only re-saves ordinary photos (RGB or greyscale); other image kinds are left exactly as they are.
+- Compress re-saves photos (RGB or greyscale, including ones with colour profiles, 16-bit samples, PNG-style predictors and photo-like palettes), shrinks oversized CMYK images without changing their colours, and stores repeated images (a logo on every page) once. Masks, line art, small logos and unusual encodings are left exactly as they are.
 - PDF to Word/Excel rebuilds the document from its text, so complex layouts, columns and fonts won't match exactly. Pages without text (scans) go into Word as pictures; run OCR first for editable text.
 - Office to PDF needs Microsoft Office (Windows) or LibreOffice; DeskFolio doesn't include either.
-- OCR reads English. Handwriting and very faint scans may not be read well.
+- OCR reads English out of the box; 18 more languages (including French, Spanish, German, Punjabi, Hindi, Arabic, Chinese, Japanese and Korean) can be added from the OCR page, up to 3 at a time. Each is a one-time download (0.6–3 MB) checked against a fixed fingerprint; after that OCR stays offline. Handwriting and very faint scans may not be read well.
 
 ## Building from source
 

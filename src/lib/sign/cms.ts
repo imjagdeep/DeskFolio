@@ -3,7 +3,10 @@
 // - creating a self-signed digital ID (RSA 3072 or ECDSA P-256),
 // - CMS SignedData for PDF signatures (PAdES: detached, SHA-256, with the
 //   ESS signing-certificate-v2 attribute and no signing-time attribute),
-// - verifying such signatures and reading certificates.
+// - verifying such signatures and reading certificates,
+// - trusted timestamps (RFC 3161, PAdES B-T): an optional timestamp authority
+//   signs the time together with a SHA-256 of the signature value; the token
+//   goes into the signature's unsigned attributes and is checked on reading.
 
 import * as asn1js from "asn1js";
 import * as pkijs from "pkijs";
@@ -15,6 +18,9 @@ const OID = {
   messageDigest: "1.2.840.113549.1.9.4",
   signingTime: "1.2.840.113549.1.9.5",
   signingCertificateV2: "1.2.840.113549.1.9.16.2.47",
+  signatureTimeStampToken: "1.2.840.113549.1.9.16.2.14",
+  tstInfo: "1.2.840.113549.1.9.16.1.4",
+  sha256: "2.16.840.1.101.3.4.2.1",
   commonName: "2.5.4.3",
   organization: "2.5.4.10",
   country: "2.5.4.6",
@@ -142,11 +148,92 @@ async function signingCertificateV2(certDer: Uint8Array): Promise<pkijs.Attribut
   return new pkijs.Attribute({ type: OID.signingCertificateV2, values: [value] });
 }
 
+/** Sends an RFC 3161 request (DER) to a timestamp authority, returns its reply (DER). */
+export type Timestamper = (request: Uint8Array) => Promise<Uint8Array>;
+
+export interface TimestampInfo {
+  /** The authority's time - trustworthy, unlike the signer's clock. */
+  time: Date;
+  /** Who vouched for the time (the authority's certificate name). */
+  authority: string;
+  /** The token's signature is valid and it stamps this very signature. */
+  intact: boolean;
+  problem?: string;
+}
+
+const sameBytes = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((x, i) => x === b[i]);
+const sha256 = async (b: Uint8Array) => bytes(await crypto().digest("SHA-256", buf(b)));
+
+/** Read a timestamp token and check it belongs to `sigValue` and is signed correctly. */
+async function checkToken(token: pkijs.ContentInfo, sigValue: Uint8Array): Promise<TimestampInfo & { tst?: pkijs.TSTInfo }> {
+  try {
+    if (token.contentType !== OID.signedData) throw new Error("not signed data");
+    const sd = new pkijs.SignedData({ schema: token.content });
+    const e = sd.encapContentInfo;
+    if (e.eContentType !== OID.tstInfo || !e.eContent) throw new Error("not a timestamp");
+    const tst = pkijs.TSTInfo.fromBER(e.eContent.getValue());
+    const certs = (sd.certificates ?? []).filter((c): c is pkijs.Certificate => c instanceof pkijs.Certificate);
+    const sid = sd.signerInfos[0]?.sid;
+    const tsaCert = sid instanceof pkijs.IssuerAndSerialNumber ? certs.find((c) => c.issuer.isEqual(sid.issuer) && c.serialNumber.isEqual(sid.serialNumber)) : certs[0];
+    const authority = (tsaCert && (rdnValue(tsaCert.subject, OID.commonName) || rdnValue(tsaCert.subject, OID.organization))) || "Timestamp authority";
+    const base = { time: tst.genTime, authority, tst };
+    const imprint = new Uint8Array(tst.messageImprint.hashedMessage.valueBlock.valueHexView);
+    if (tst.messageImprint.hashAlgorithm.algorithmId !== OID.sha256 || !sameBytes(imprint, await sha256(sigValue))) {
+      return { ...base, intact: false, problem: "The timestamp belongs to a different signature." };
+    }
+    // pkijs's verify reads a timestamp's content only from the plain (primitive)
+    // OCTET STRING form; the chunked (constructed) BER form is valid too, so pass
+    // the plain form either way.
+    e.eContent = new asn1js.OctetString({ valueHex: e.eContent.getValue() });
+    // For a timestamp token pkijs also re-checks the imprint, so it needs the stamped data.
+    const v = await sd.verify({ signer: 0, data: buf(sigValue), checkChain: false, extendedMode: true });
+    return v.signatureVerified ? { ...base, intact: true } : { ...base, intact: false, problem: "The timestamp's own signature isn't valid." };
+  } catch {
+    return { time: new Date(NaN), authority: "", intact: false, problem: "The timestamp is damaged." };
+  }
+}
+
+/** Ask the authority to timestamp `sigValue`; returns the checked token. */
+async function fetchTimestamp(sigValue: Uint8Array, timestamper: Timestamper): Promise<pkijs.ContentInfo> {
+  const nonce = new Uint8Array(8);
+  globalThis.crypto.getRandomValues(nonce);
+  nonce[0] = (nonce[0] & 0x3f) | 0x40; // positive and no leading zero byte, so it round-trips exactly
+  const nonceInt = new asn1js.Integer({ valueHex: buf(nonce) });
+  const req = new pkijs.TimeStampReq({
+    version: 1,
+    messageImprint: new pkijs.MessageImprint({
+      hashAlgorithm: new pkijs.AlgorithmIdentifier({ algorithmId: OID.sha256 }),
+      hashedMessage: new asn1js.OctetString({ valueHex: buf(await sha256(sigValue)) }),
+    }),
+    nonce: nonceInt,
+    certReq: true,
+  });
+  const reply = await timestamper(bytes(req.toSchema().toBER(false)));
+  let resp: pkijs.TimeStampResp;
+  try {
+    resp = pkijs.TimeStampResp.fromBER(buf(reply));
+  } catch {
+    throw new Error("The timestamp service sent something that isn't a timestamp.");
+  }
+  const status = resp.status.status;
+  if (status !== 0 && status !== 1) {
+    const why = (resp.status.statusStrings ?? []).map((t) => t.valueBlock.value).join(" ");
+    throw new Error(`The timestamp service refused the request${why ? `: ${why}` : ""}.`);
+  }
+  const token = resp.timeStampToken;
+  if (!token) throw new Error("The timestamp service sent no timestamp.");
+  const check = await checkToken(token, sigValue);
+  if (!check.intact) throw new Error(check.problem ?? "The timestamp didn't check out.");
+  if (check.tst?.nonce && !check.tst.nonce.isEqual(nonceInt)) throw new Error("The timestamp answers a different request.");
+  return token;
+}
+
 /**
  * Detached CMS SignedData over `data` (the PDF bytes the signature covers),
- * signed with `key` for `cert` (plus its chain).
+ * signed with `key` for `cert` (plus its chain). With a `timestamper`, the
+ * signature also gets a trusted timestamp (PAdES B-T).
  */
-export async function signDetached(data: Uint8Array, cert: Uint8Array, chain: Uint8Array[], key: CryptoKey): Promise<Uint8Array> {
+export async function signDetached(data: Uint8Array, cert: Uint8Array, chain: Uint8Array[], key: CryptoKey, timestamper?: Timestamper): Promise<Uint8Array> {
   const signer = pkijs.Certificate.fromBER(buf(cert));
   const digest = await crypto().digest("SHA-256", buf(data));
   const attrs = new pkijs.SignedAndUnsignedAttributes({
@@ -170,6 +257,14 @@ export async function signDetached(data: Uint8Array, cert: Uint8Array, chain: Ui
     certificates: [signer, ...chain.map((c) => pkijs.Certificate.fromBER(buf(c)))],
   });
   await sd.sign(key, 0, "SHA-256");
+  if (timestamper) {
+    const si = sd.signerInfos[0];
+    const token = await fetchTimestamp(new Uint8Array(si.signature.valueBlock.valueHexView), timestamper);
+    si.unsignedAttrs = new pkijs.SignedAndUnsignedAttributes({
+      type: 1,
+      attributes: [new pkijs.Attribute({ type: OID.signatureTimeStampToken, values: [token.toSchema()] })],
+    });
+  }
   const ci = new pkijs.ContentInfo({ contentType: OID.signedData, content: sd.toSchema(true) });
   return bytes(ci.toSchema().toBER(false));
 }
@@ -217,6 +312,8 @@ export interface CmsCheck {
   certificates: Uint8Array[];
   /** Why it isn't intact, in plain words. */
   problem?: string;
+  /** A trusted timestamp on the signature, if it has one. */
+  timestamp?: TimestampInfo;
 }
 
 /** Check a detached CMS signature over `data`. */
@@ -235,12 +332,29 @@ export async function verifyDetached(cms: Uint8Array, data: Uint8Array): Promise
   const signerCert =
     sid instanceof pkijs.IssuerAndSerialNumber ? certs.find((c) => c.issuer.isEqual(sid.issuer) && c.serialNumber.isEqual(sid.serialNumber)) : certs[0];
   const signer = signerCert ? bytes(signerCert.toSchema(true).toBER(false)) : null;
+  let timestamp: TimestampInfo | undefined;
+  const si = sd.signerInfos[0];
+  const tsAttr = si?.unsignedAttrs?.attributes.find((a) => a.type === OID.signatureTimeStampToken);
+  if (si && tsAttr?.values[0]) {
+    let token: pkijs.ContentInfo | null = null;
+    try {
+      token = new pkijs.ContentInfo({ schema: tsAttr.values[0] });
+    } catch {
+      timestamp = { time: new Date(NaN), authority: "", intact: false, problem: "The timestamp is damaged." };
+    }
+    if (token) {
+      const checked = await checkToken(token, new Uint8Array(si.signature.valueBlock.valueHexView));
+      timestamp = { time: checked.time, authority: checked.authority, intact: checked.intact, problem: checked.problem };
+    }
+  }
   try {
     const r = await sd.verify({ signer: 0, data: buf(data), checkChain: false, extendedMode: true });
-    return r.signatureVerified ? { intact: true, signer, certificates } : { intact: false, signer, certificates, problem: "The document was changed after it was signed, or the signature is not valid." };
+    return r.signatureVerified
+      ? { intact: true, signer, certificates, timestamp }
+      : { intact: false, signer, certificates, timestamp, problem: "The document was changed after it was signed, or the signature is not valid." };
   } catch (e) {
     const msg = e && typeof e === "object" && "message" in e && typeof e.message === "string" ? e.message : String(e);
-    return { intact: false, signer, certificates, problem: /digest/i.test(msg) ? "The document was changed after it was signed." : `The signature couldn't be checked: ${msg}` };
+    return { intact: false, signer, certificates, timestamp, problem: /digest/i.test(msg) ? "The document was changed after it was signed." : `The signature couldn't be checked: ${msg}` };
   }
 }
 

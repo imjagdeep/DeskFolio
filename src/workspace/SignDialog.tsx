@@ -34,6 +34,23 @@ const readLast = () => {
   }
 };
 
+// Trusted timestamp: off ("") unless the user picks a service; remembered.
+const TSA_KEY = "deskfolio-timestamp-service";
+const readTsa = () => {
+  try {
+    return localStorage.getItem(TSA_KEY) ?? "";
+  } catch {
+    return "";
+  }
+};
+const saveTsa = (id: string) => {
+  try {
+    localStorage.setItem(TSA_KEY, id);
+  } catch {
+    // Not remembered; it still applies to this signature.
+  }
+};
+
 function dataUrlBytes(url: string): Uint8Array {
   const b64 = url.slice(url.indexOf(",") + 1);
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -49,11 +66,22 @@ export function SignDialog() {
   const [location, setLocation] = useState("");
   const [image, setImage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [tsa, setTsa] = useState(readTsa);
+  const [services, setServices] = useState<[string, string][]>([]);
+
+  useEffect(() => {
+    api
+      .timestampServices()
+      .then(setServices)
+      .catch(() => setServices([]));
+  }, []);
 
   useEffect(() => {
     if (!req) return;
     let live = true;
     setPw("");
+    // Show the newest handwritten signature by default ("No, just the text" stays one click away).
+    setImage(sigs[0]?.id ?? "");
     // Hide the previous list until this one is read, so a choice made in the
     // meantime isn't switched back to the last-used ID when it arrives.
     setIds(null);
@@ -92,7 +120,21 @@ export function SignDialog() {
       if (!doc) return;
       const signer = await unlockId(chosen.file, pw);
       const sig = sigs.find((s) => s.id === image);
-      const signed = await signPdf(doc.bytes, { page: req.page, rect: req.rect, name: chosen.info.name, reason: reason.trim() || undefined, location: location.trim() || undefined, image: sig ? dataUrlBytes(sig.dataUrl) : undefined }, signer);
+      const service = services.some(([id]) => id === tsa) ? tsa : "";
+      const signed = await signPdf(
+        doc.bytes,
+        {
+          page: req.page,
+          rect: req.rect,
+          name: chosen.info.name,
+          reason: reason.trim() || undefined,
+          location: location.trim() || undefined,
+          image: sig ? dataUrlBytes(sig.dataUrl) : undefined,
+          timestamper: service ? (r: Uint8Array) => api.timestampRequest(service, r) : undefined,
+        },
+        signer,
+      );
+      saveTsa(service);
       const target = await pickSavePath(siblingPath(doc.path, "signed"));
       if (!target) return;
       await api.writeFile(target, signed);
@@ -179,6 +221,25 @@ export function SignDialog() {
                     </option>
                   ))}
                 </select>
+              </label>
+            )}
+            {services.length > 0 && (
+              <label className="field">
+                <span>Trusted timestamp</span>
+                <select value={services.some(([id]) => id === tsa) ? tsa : ""} onChange={(e) => setTsa(e.target.value)}>
+                  <option value="">Off - the time comes from this computer's clock</option>
+                  {services.map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name} - proves when it was signed
+                    </option>
+                  ))}
+                </select>
+                {tsa && (
+                  <span className="muted small">
+                    Needs the internet. Only a fingerprint of the signature is sent - never the document - and the reply is checked before it's
+                    added.
+                  </span>
+                )}
               </label>
             )}
             <p className="muted small">The signed copy is saved as a new file. Changing it afterwards shows the signature as broken, so finish other edits first.</p>

@@ -5,12 +5,58 @@
 // selected, searched and copied.
 
 import { degrees, PDFDocument } from "@cantoo/pdf-lib";
+import { useSyncExternalStore } from "react";
 import { createWorker, OEM, PSM } from "tesseract.js";
+import { api } from "./api";
 import { pageImage, readPage } from "./convert/fromPdf";
 import { load, saveDoc, type LoadOpts } from "./pdf/ops";
 import type { PDFDocumentProxy } from "./pdfjs";
+import { createStore } from "./store";
 
 const DPI = 300;
+
+/* Which languages OCR reads. English is built in; others are downloaded packs
+   (see src-tauri/src/ocrlang.rs). The choice is remembered and used by every OCR
+   run - the OCR page, batch processing and redaction. */
+export const MAX_OCR_LANGS = 3;
+const LANGS_KEY = "deskfolio-ocr-langs";
+const langsStore = createStore<string[]>(readLangs());
+function readLangs(): string[] {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(LANGS_KEY) ?? "null");
+    if (Array.isArray(v) && v.length && v.every((c) => typeof c === "string" && /^[a-z_]{3,8}$/.test(c))) {
+      return (v as string[]).slice(0, MAX_OCR_LANGS);
+    }
+  } catch {
+    // Unreadable or no storage: fall back to English.
+  }
+  return ["eng"];
+}
+export const useOcrLangs = () => useSyncExternalStore(langsStore.subscribe, langsStore.get);
+export const ocrLangs = () => langsStore.get();
+export function setOcrLangs(codes: string[]) {
+  const next = codes.length ? codes.slice(0, MAX_OCR_LANGS) : ["eng"];
+  langsStore.set(next);
+  try {
+    localStorage.setItem(LANGS_KEY, JSON.stringify(next));
+  } catch {
+    // Not remembered next time; it still applies now.
+  }
+}
+
+/** The models tesseract gets: English from the app, the rest from downloaded packs. */
+async function modelData(codes: string[]): Promise<{ code: string; data: Uint8Array }[]> {
+  return Promise.all(
+    codes.map(async (code) => {
+      if (code === "eng") {
+        const r = await fetch("/tesseract/lang/eng.traineddata.gz");
+        if (!r.ok) throw new Error("The built-in English text model is missing - reinstall DeskFolio.");
+        return { code, data: new Uint8Array(await r.arrayBuffer()) };
+      }
+      return { code, data: await api.ocrLangData(code) };
+    }),
+  );
+}
 
 export interface OcrResult {
   bytes: Uint8Array;
@@ -27,7 +73,7 @@ export type OcrProgress = (page: number, total: number, stage: "loading" | "read
 export async function ocrPdf(
   pdf: PDFDocumentProxy,
   bytes: Uint8Array,
-  opts: { onlyWithoutText: boolean; onProgress?: OcrProgress; signal?: AbortSignal } & LoadOpts,
+  opts: { onlyWithoutText: boolean; onProgress?: OcrProgress; signal?: AbortSignal; langs?: string[] } & LoadOpts,
 ): Promise<OcrResult> {
   const total = pdf.numPages;
   // Which pages need reading.
@@ -38,7 +84,7 @@ export async function ocrPdf(
   if (!todo.length) return { bytes, read: 0, skipped: total, words: 0 };
 
   opts.onProgress?.(0, todo.length, "loading");
-  const worker = await createWorker("eng", OEM.LSTM_ONLY, {
+  const worker = await createWorker(await modelData(opts.langs ?? ocrLangs()), OEM.LSTM_ONLY, {
     workerPath: "/tesseract/worker.min.js",
     corePath: "/tesseract/core",
     langPath: "/tesseract/lang",

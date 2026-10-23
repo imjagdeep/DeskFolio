@@ -5,10 +5,12 @@
 
 import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFRef, PDFString, StandardFonts } from "@cantoo/pdf-lib";
 import { unsupportedChars } from "../pdf/stamp";
-import { certInfo, signDetached, verifyDetached, type CertInfo } from "./cms";
+import { certInfo, signDetached, verifyDetached, type CertInfo, type Timestamper, type TimestampInfo } from "./cms";
 
-/** Room for the signature in the file: 16 KB fits RSA 4096 with a 4-certificate chain. */
+/** Room for the signature in the file: 16 KB fits RSA 4096 with a 4-certificate chain;
+    a timestamp adds the authority's token and certificates, so twice that then. */
 const SLOT = 16384;
+const SLOT_TIMESTAMPED = 32768;
 const PLACEHOLDER = 9999999999;
 
 export interface Signer {
@@ -27,6 +29,8 @@ export interface SignOptions {
   /** A picture of the handwritten signature (PNG), shown on the left. */
   image?: Uint8Array;
   date?: Date;
+  /** Add a trusted timestamp from this authority (PAdES B-T). */
+  timestamper?: Timestamper;
 }
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -73,7 +77,7 @@ export async function signPdf(bytes: Uint8Array, o: SignOptions, signer: Signer)
     SubFilter: "ETSI.CAdES.detached",
     ByteRange: [0, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER],
   });
-  sig.set(PDFName.of("Contents"), PDFHexString.of("0".repeat(SLOT * 2)));
+  sig.set(PDFName.of("Contents"), PDFHexString.of("0".repeat((o.timestamper ? SLOT_TIMESTAMPED : SLOT) * 2)));
   sig.set(PDFName.of("M"), PDFString.fromDate(o.date ?? new Date()));
   sig.set(PDFName.of("Name"), PDFHexString.fromText(o.name || info.name));
   if (o.reason) sig.set(PDFName.of("Reason"), PDFHexString.fromText(o.reason));
@@ -164,7 +168,7 @@ export async function signPdf(bytes: Uint8Array, o: SignOptions, signer: Signer)
   const covered = new Uint8Array(range[1] + range[3]);
   covered.set(out.subarray(0, range[1]), 0);
   covered.set(out.subarray(range[2], range[2] + range[3]), range[1]);
-  const cms = await signDetached(covered, signer.cert, signer.chain, signer.key);
+  const cms = await signDetached(covered, signer.cert, signer.chain, signer.key, o.timestamper);
   const hex = Array.from(cms, (b) => b.toString(16).padStart(2, "0")).join("");
   if (hex.length > cEnd - cStart - 2) throw new Error("The signature is bigger than the room reserved for it.");
   for (let i = 0; i < hex.length; i++) out[cStart + 1 + i] = hex.charCodeAt(i);
@@ -187,6 +191,8 @@ export interface SignatureStatus {
   problem?: string;
   /** 1-based page of the visible box, if any. */
   page: number | null;
+  /** A trusted timestamp, when the signature has one. */
+  timestamp?: TimestampInfo;
 }
 
 const textOf = (d: PDFDict, key: string): string => {
@@ -262,6 +268,7 @@ export async function readSignatures(bytes: Uint8Array): Promise<SignatureStatus
         // Later updates (comments, more signatures) appear after c + d.
         wholeFile: c + d === bytes.length || latin1(bytes.subarray(c + d)).trim() === "",
         problem: check.problem,
+        timestamp: check.timestamp,
       });
     }
   };

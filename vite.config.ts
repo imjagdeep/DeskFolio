@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
 // @ts-expect-error type error without @types/node package
-import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 const host = process.env.TAURI_DEV_HOST;
 
 /**
@@ -38,7 +38,14 @@ function tesseractAssets(): Plugin {
       const to = "public/tesseract";
       mkdirSync(`${to}/core`, { recursive: true });
       mkdirSync(`${to}/lang`, { recursive: true });
-      cpSync("node_modules/tesseract.js/dist/worker.min.js", `${to}/worker.min.js`);
+      // tesseract.js 7.0.0 names a language given as { code, data } by its data
+      // instead of its code when starting the engine, so downloaded packs fail with
+      // "initialization failed". Fix that one spot; stop the build if the worker
+      // changes so the fix is looked at again.
+      const worker = readFileSync("node_modules/tesseract.js/dist/worker.min.js", "utf8");
+      const bug = 'return"string"==typeof t?t:t.data}';
+      if (worker.split(bug).length !== 2) throw new Error("tesseract.js worker changed: re-check the language-name fix in vite.config.ts");
+      writeFileSync(`${to}/worker.min.js`, worker.replace(bug, 'return"string"==typeof t?t:t.code}'));
       for (const v of ["", "simd-", "relaxedsimd-"]) {
         cpSync(`node_modules/tesseract.js-core/tesseract-core-${v}lstm.wasm.js`, `${to}/core/tesseract-core-${v}lstm.wasm.js`);
       }

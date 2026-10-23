@@ -7,7 +7,9 @@ mod compress;
 mod desklab;
 mod digitalid;
 mod files;
+mod ocrlang;
 mod office;
+mod tsa;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -89,6 +91,71 @@ fn digital_ids(app: AppHandle) -> CmdResult<(String, Vec<String>)> {
 #[tauri::command]
 fn digital_id_delete(app: AppHandle, name: String) -> CmdResult<()> {
     digitalid::delete(&ids_dir(&app)?, &name)
+}
+
+// ---------- OCR language packs (downloaded only on request, see ocrlang.rs) ----------
+
+/// The one HTTP client for things the user asks DeskFolio to fetch: OCR language
+/// packs and signature timestamps. The webview itself has no network (CSP).
+struct Net(reqwest::Client);
+
+fn lang_dir(app: &AppHandle) -> CmdResult<PathBuf> {
+    let base = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("no app data folder: {e}"))?;
+    ocrlang::dir(&base)
+}
+
+#[tauri::command]
+fn ocr_langs(app: AppHandle) -> CmdResult<Vec<ocrlang::PackInfo>> {
+    Ok(ocrlang::list(&lang_dir(&app)?))
+}
+
+#[tauri::command]
+async fn ocr_lang_download(app: AppHandle, net: State<'_, Net>, code: String) -> CmdResult<()> {
+    let pack = ocrlang::find(&code)?;
+    ocrlang::download(&net.0, &lang_dir(&app)?, pack).await
+}
+
+#[tauri::command]
+fn ocr_lang_data(app: AppHandle, code: String) -> CmdResult<Response> {
+    let pack = ocrlang::find(&code)?;
+    ocrlang::read(&lang_dir(&app)?, pack).map(Response::new)
+}
+
+#[tauri::command]
+fn ocr_lang_remove(app: AppHandle, code: String) -> CmdResult<()> {
+    ocrlang::remove(&lang_dir(&app)?, ocrlang::find(&code)?)
+}
+
+// ---------- trusted timestamps for digital signatures (opt-in, see tsa.rs) ----------
+
+/// The timestamp services the user can pick from: (id, name).
+#[tauri::command]
+fn timestamp_services() -> Vec<(&'static str, &'static str)> {
+    tsa::AUTHORITIES
+        .iter()
+        .map(|(id, name, _)| (*id, *name))
+        .collect()
+}
+
+/// Carry an RFC 3161 request (raw body) to the service named in `x-tsa`; the
+/// reply comes back raw. The web side builds and checks both.
+#[tauri::command]
+async fn timestamp_request(request: Request<'_>, net: State<'_, Net>) -> CmdResult<Response> {
+    let id = request
+        .headers()
+        .get("x-tsa")
+        .and_then(|v| v.to_str().ok())
+        .ok_or("no timestamp service chosen")?
+        .to_string();
+    let InvokeBody::Raw(data) = request.body() else {
+        return Err("expected a raw timestamp request".into());
+    };
+    tsa::request(&net.0, &id, data.clone())
+        .await
+        .map(Response::new)
 }
 
 // ---------- the optional DeskLab account (all calls go through account.rs) ----------
@@ -430,6 +497,13 @@ pub fn run() {
             let args: Vec<String> = std::env::args().collect();
             app.manage(Startup(Mutex::new(files::paths_from_args(&args))));
             app.manage(account::Account::new("deskfolio")?);
+            // the account above installed rustls' crypto provider
+            let client = reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(60))
+                .user_agent(format!("DeskFolio {}", env!("CARGO_PKG_VERSION")))
+                .build()
+                .map_err(|e| format!("cannot start the network client: {e}"))?;
+            app.manage(Net(client));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -453,6 +527,12 @@ pub fn run() {
             digital_id_export,
             digital_ids,
             digital_id_delete,
+            ocr_langs,
+            ocr_lang_download,
+            ocr_lang_data,
+            ocr_lang_remove,
+            timestamp_services,
+            timestamp_request,
             write_file,
             compress_pdf,
             office_converters,

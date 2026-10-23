@@ -62,10 +62,17 @@ export function SignaturesPanel({ doc }: { doc: OpenDoc }) {
               {s.signer?.email ? ` · ${s.signer.email}` : ""}
             </div>
             <div className="muted small">
-              {s.signedAt ? `Signed ${s.signedAt.toLocaleString()} (signer's clock)` : "No signing time"}
+              {s.timestamp?.intact
+                ? `Signed ${s.timestamp.time.toLocaleString()} (trusted time from ${s.timestamp.authority})`
+                : s.signedAt
+                  ? `Signed ${s.signedAt.toLocaleString()} (signer's clock)`
+                  : "No signing time"}
               {s.reason ? ` · ${s.reason}` : ""}
               {s.location ? ` · ${s.location}` : ""}
             </div>
+            {s.timestamp && !s.timestamp.intact && (
+              <p className="error-text small">Its timestamp can't be trusted: {s.timestamp.problem ?? "it doesn't check out"}</p>
+            )}
             <p className="muted small">{v.detail}</p>
             <div className="page-actions">
               {s.page && <button onClick={() => s.page && goToPage(s.page)}>Go to page {s.page}</button>}
