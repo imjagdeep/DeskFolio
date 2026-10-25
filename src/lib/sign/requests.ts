@@ -236,6 +236,24 @@ export async function finalCopy(req: SignRequest): Promise<Uint8Array> {
 }
 
 /**
+ * While a request is open: the document with what has been signed so far, for
+ * the sender to look at. Every page says it isn't the final copy.
+ */
+export async function progressCopy(req: SignRequest): Promise<Uint8Array> {
+  const key = keyFor(req.id);
+  if (!key) throw new Error("This request was sent from another computer, so its files can't be opened here.");
+  const original = await unseal(key, await download(`/v1/envelopes/${req.id}/files/document`));
+  const fields = (await unsealJson(key, await download(`/v1/envelopes/${req.id}/files/fields`), isFieldsFile)).fields;
+  const signers = req.recipients.filter((r) => r.role === "signer");
+  const done = signers.filter((s) => s.status === "signed");
+  const values: ValuesFile[] = [];
+  for (const s of done) values.push(await unsealJson(key, await download(`/v1/envelopes/${req.id}/files/values-${s.id}`), isValuesFile));
+  const { buildProgress } = await import("./finalize");
+  const note = `NOT THE FINAL COPY - signed so far by ${done.map((s) => s.name).join(", ") || "no one"} (${done.length} of ${signers.length}) - ${new Date().toLocaleString()}`;
+  return buildProgress(original, fields, values, note);
+}
+
+/**
  * Everyone signed but the final copy wasn't made (the last signer's browser
  * was closed too soon): make it here and send everyone their copy.
  */

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../components/Common";
 import { refreshAccount, useAccount } from "../account/account";
 import { openPath, saveBytes } from "../lib/doc";
-import { cancelRequest, deleteRequest, dueNow, finalCopy, finishHere, keyFor, keyFromLink, listRequests, requestDetail, resend, type RequestEvent, type SignRequest } from "../lib/sign/requests";
+import { cancelRequest, deleteRequest, dueNow, finalCopy, finishHere, keyFor, keyFromLink, listRequests, progressCopy, requestDetail, resend, type RequestEvent, type SignRequest } from "../lib/sign/requests";
 import { checkAgreements, dismissNews, takeWantedAgreement, useAgreementNews } from "../lib/sign/watch";
 import { toast, toastError } from "../lib/store";
 import { markupState } from "../workspace/markup";
@@ -148,11 +148,12 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
       setBusy(false);
     }
   };
-  const saveCopy = (bytes: Uint8Array) =>
+  const saveCopy = (bytes: Uint8Array, suffix = "signed") =>
     run(async () => {
-      const path = await saveBytes(bytes, `${req.title.replace(/[\\/:*?"<>|]/g, "")} (signed).pdf`);
+      const path = await saveBytes(bytes, `${req.title.replace(/[\\/:*?"<>|]/g, "")} (${suffix}).pdf`);
       if (path) await openPath(path);
     });
+  const someoneSigned = req.recipients.some((p) => p.role === "signer" && p.status === "signed");
 
   const waitingFor = dueNow(req.recipients, req.sequential).filter((r) => r.status === "notified" || r.status === "opened");
   return (
@@ -194,6 +195,16 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
             }
           >
             Make the final copy
+          </button>
+        )}
+        {req.status === "sent" && someoneSigned && hasKey && (
+          <button
+            className="primary"
+            disabled={busy}
+            title="The document with the signatures given so far. Each page is marked as not the final copy."
+            onClick={() => void run(async () => saveCopy(await progressCopy(req), "signed so far"))}
+          >
+            View what's signed so far…
           </button>
         )}
         {req.status === "sent" && waitingFor.length > 0 && hasKey && (
