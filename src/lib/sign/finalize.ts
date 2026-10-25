@@ -212,3 +212,28 @@ export async function buildFinal(original: Uint8Array, fields: Field[], values: 
   doc.setProducer("DeskLab Sign");
   return doc.save({ useObjectStreams: false });
 }
+
+/**
+ * For the sender while a request is still open: the document with the
+ * signatures given so far, each page marked as not the final copy (no
+ * certificate; that comes when everyone has signed).
+ */
+export async function buildProgress(original: Uint8Array, fields: Field[], values: ValuesFile[], note: string): Promise<Uint8Array> {
+  const doc = await PDFDocument.load(original, { updateMetadata: false });
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const pages = doc.getPages();
+  for (const f of fields) {
+    const v = values.find((x) => x.recipient === f.recipient)?.values[f.id];
+    const page = pages[f.page];
+    if (v && page) await drawValue(doc, page, f, v, font);
+  }
+  const text = pdfSafe(note);
+  for (const page of pages) {
+    const { width, height } = page.getSize();
+    const size = 7.5;
+    const w = font.widthOfTextAtSize(text, size);
+    page.drawText(text, { x: Math.max(8, (width - w) / 2), y: height - 14, size, font, color: rgb(0.75, 0.2, 0.1) });
+  }
+  doc.setProducer("DeskLab Sign (in progress)");
+  return doc.save({ useObjectStreams: false });
+}
