@@ -395,3 +395,4 @@ button.danger-fill:hover:not(:disabled) { background: #b71c1c; filter: none; }
 .ag-count { margin-left: 4px; opacity: 0.7; font-variant-numeric: tabular-nums; }
 .ag-kept { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0; padding: 10px 14px; border-radius: 14px; background: var(--green-soft); }
 .ag-kept > span { min-width: 0; overflow-wrap: anywhere; }
+.ag-altered { margin: 0; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--text); }

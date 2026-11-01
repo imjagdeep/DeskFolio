@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { keptFileName, keptPath, toKeep } from "./archive";
+import { alteredPage, keptFileName, keptPath, toKeep } from "./archive";
 import { groupOf, matchesQuery, type SignRequest } from "./requests";
 
 const req = (over: Partial<SignRequest> = {}): SignRequest => ({
@@ -64,6 +64,13 @@ describe("kept signed copies", () => {
     localStorage.setItem("deskfolio-sign-keys", JSON.stringify({ a: KEY, b: KEY, c: KEY }));
     const list = [req({ id: "a" }), req({ id: "b", status: "sent" }), req({ id: "c", filesDeleted: true }), req({ id: "d" })];
     expect(toKeep(list).map((r) => r.id)).toEqual(["a"]);
+  });
+
+  it("doesn't keep (or check again) a copy that didn't match what was signed", () => {
+    localStorage.setItem("deskfolio-sign-keys", JSON.stringify({ a: KEY }));
+    localStorage.setItem("deskfolio-sign-altered", JSON.stringify({ a: 2 }));
+    expect(alteredPage("a")).toBe(2);
+    expect(toKeep([req({ id: "a" })])).toEqual([]);
   });
 
   it("doesn't keep a copy twice", () => {

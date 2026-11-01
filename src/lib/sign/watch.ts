@@ -122,8 +122,10 @@ export async function checkAgreements(quiet = false): Promise<SignRequest[] | nu
   }
   // Newly completed: keep the signed copy on this computer (the server's copy goes after 30 days).
   keepSignedCopies(list)
-    .then((kept) => {
-      if (!quiet) for (const r of kept) toast(`Signed copy of "${r.title}" kept in Documents › DeskFolio › Signed agreements.`);
+    .then(({ kept, altered }) => {
+      if (quiet) return;
+      for (const r of kept) toast(`Signed copy of "${r.title}" kept in Documents › DeskFolio › Signed agreements.`);
+      for (const a of altered) toast(`The signed copy of "${a.req.title}" doesn't match what was signed (page ${a.page}). It wasn't kept; see Agreements.`, true);
     })
     .catch((e: unknown) => console.warn("Couldn't keep signed copies yet:", e));
   return list;

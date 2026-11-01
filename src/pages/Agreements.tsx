@@ -6,7 +6,7 @@ import { PageHeader } from "../components/Common";
 import { refreshAccount, useAccount } from "../account/account";
 import { api } from "../lib/api";
 import { openPath, saveBytes } from "../lib/doc";
-import { keptPath, signedAgreementsDir } from "../lib/sign/archive";
+import { alteredPage, keptPath, signedAgreementsDir } from "../lib/sign/archive";
 import {
   cancelRequest,
   deleteRequest,
@@ -177,6 +177,7 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
   const [busy, setBusy] = useState(false);
   const hasKey = !!keyFor(req.id);
   const kept = keptPath(req.id);
+  const altered = alteredPage(req.id);
   useEffect(() => {
     requestDetail(req.id)
       .then((d) => {
@@ -308,7 +309,12 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
           </button>
         </p>
       )}
-      {req.status === "completed" && !kept && !req.filesDeleted && hasKey && <p className="muted small">The signed copy is being kept on this computer (Documents › DeskFolio › Signed agreements).</p>}
+      {altered !== null && (
+        <p className="ag-altered small">
+          <b>This signed copy doesn't match what was signed.</b> DeskFolio rebuilt the document from the original and each person's entries, and page {altered} of the signed copy is different, so it wasn't kept. Don't rely on it; ask the signers to sign again.
+        </p>
+      )}
+      {req.status === "completed" && !kept && altered === null && !req.filesDeleted && hasKey && <p className="muted small">The signed copy is being checked and kept on this computer (Documents › DeskFolio › Signed agreements).</p>}
       {!hasKey && !req.filesDeleted && !kept && <KeyFromEmail req={req} onDone={onChange} />}
       {req.status === "completed" && req.filesDeleted && !kept && <p className="muted small">The files were deleted 30 days after completion; use the copy you saved.</p>}
       <p className="muted small selectable">Request ID {req.id}</p>
