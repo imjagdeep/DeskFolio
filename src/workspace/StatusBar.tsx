@@ -1,5 +1,5 @@
-// Page and zoom controls, stacked at the foot of the right-hand rail (where
-// the status bar used to be): page x of y, previous/next, zoom, fit, reading mode.
+// Page and zoom controls in a dark pill floating at the foot of the document:
+// page x of y, previous/next, zoom, fit, reading mode.
 
 import { useEffect, useState } from "react";
 import { ChevronDownIcon, ChevronUpIcon, FitPageIcon, FitWidthIcon, MoonIcon, ZoomInIcon, ZoomOutIcon } from "../components/Icons";
@@ -55,8 +55,8 @@ export function PageControls() {
         <ChevronDownIcon size={15} />
       </button>
       <span className="rail-sep" />
-      <button className="icon" title="Zoom in (Ctrl+=)" aria-label="Zoom in" onClick={() => zoom(1)}>
-        <ZoomInIcon size={16} />
+      <button className="icon" title="Zoom out (Ctrl+-)" aria-label="Zoom out" onClick={() => zoom(-1)}>
+        <ZoomOutIcon size={16} />
       </button>
       <label className="zoom-pill" title="Zoom">
         <span>{pct}</span>
@@ -69,8 +69,8 @@ export function PageControls() {
           ))}
         </select>
       </label>
-      <button className="icon" title="Zoom out (Ctrl+-)" aria-label="Zoom out" onClick={() => zoom(-1)}>
-        <ZoomOutIcon size={16} />
+      <button className="icon" title="Zoom in (Ctrl+=)" aria-label="Zoom in" onClick={() => zoom(1)}>
+        <ZoomInIcon size={16} />
       </button>
       <button className={view.preset === "page-width" ? "icon on" : "icon"} title="Fit width" aria-label="Fit width" onClick={() => setScale("page-width")}>
         <FitWidthIcon size={16} />
