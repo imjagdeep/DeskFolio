@@ -126,6 +126,17 @@ export async function keyFromLink(req: SignRequest, link: string): Promise<void>
   keepKey(req.id, key);
 }
 
+/** Which tab of Agreements a request shows under. */
+export type RequestGroup = "open" | "completed" | "closed";
+export const groupOf = (s: RequestStatus): RequestGroup => (s === "completed" ? "completed" : s === "declined" || s === "voided" || s === "expired" ? "closed" : "open");
+
+/** Search: the title, a person's name or email, or the start of the request id. */
+export function matchesQuery(r: SignRequest, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return r.title.toLowerCase().includes(q) || r.id.startsWith(q) || r.recipients.some((p) => p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q));
+}
+
 /** Who may sign now: same rule as the server (lowest open position, or everyone). */
 export function dueNow(recipients: { id: string; role: string; position: number; status: string }[], sequential: boolean) {
   const open = recipients.filter((r) => r.role === "signer" && r.status !== "signed" && r.status !== "declined");

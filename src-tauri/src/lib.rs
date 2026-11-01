@@ -93,6 +93,23 @@ fn digital_id_delete(app: AppHandle, name: String) -> CmdResult<()> {
     digitalid::delete(&ids_dir(&app)?, &name)
 }
 
+// ---------- signed agreements (kept copies) ----------
+
+/// Documents/DeskFolio/Signed agreements (created if needed): where the signed
+/// copies of completed requests are kept. Outside the app's data folder, so
+/// they survive an uninstall.
+#[tauri::command]
+fn signed_agreements_dir(app: AppHandle) -> CmdResult<String> {
+    let dir = app
+        .path()
+        .document_dir()
+        .map_err(|e| format!("no Documents folder: {e}"))?
+        .join("DeskFolio")
+        .join("Signed agreements");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("can't create {}: {e}", dir.display()))?;
+    Ok(dir.to_string_lossy().into_owned())
+}
+
 // ---------- OCR language packs (downloaded only on request, see ocrlang.rs) ----------
 
 /// The one HTTP client for things the user asks DeskFolio to fetch: OCR language
@@ -527,6 +544,7 @@ pub fn run() {
             digital_id_export,
             digital_ids,
             digital_id_delete,
+            signed_agreements_dir,
             ocr_langs,
             ocr_lang_download,
             ocr_lang_data,

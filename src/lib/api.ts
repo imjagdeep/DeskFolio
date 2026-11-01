@@ -38,6 +38,8 @@ export const api = {
     invoke<void>("digital_id_export", { path, cert, chain, pkcs8, password, alias }),
   digitalIds: () => invoke<[string, string[]]>("digital_ids"),
   digitalIdDelete: (name: string) => invoke<void>("digital_id_delete", { name }),
+  /** Documents/DeskFolio/Signed agreements, created if needed. */
+  signedAgreementsDir: () => invoke<string>("signed_agreements_dir"),
   revealFile: (path: string) => invoke<void>("reveal_file", { path }),
   /** Batch: the PDFs in a folder (sorted), and an output path that doesn't exist yet. */
   batchListPdfs: (dir: string, recursive: boolean) => invoke<string[]>("batch_list_pdfs", { dir, recursive }),
