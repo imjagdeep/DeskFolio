@@ -1,31 +1,15 @@
 // The in-window menu bar (File, Edit, View, Help) for Windows and Linux;
 // on a Mac the same menus go into the system menu bar instead. Handles the
-// keyboard shortcuts too. `compact` shows one ☰ button instead (open = -1 is
-// the list of menus, open = i that menu); with `quick` the ☰ button opens one
-// Chrome-style list instead (everyday commands, groups, fly-out submenus, a
-// zoom row). Same file in every DeskLab app.
+// keyboard shortcuts too. `compact` shows one ☰ button instead: open = -1 is
+// the list of menus, each opening beside it on hover or click; open = i shows
+// that menu in place (keyboard: Alt, arrows). Same file in every DeskLab app.
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { accelText, isCmd, isMac, isRow, isSub, matches, allCommands, runCmd, setNativeMenu, type Entry, type MenuDef } from "./menu";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { accelText, isCmd, isMac, isSub, matches, allCommands, runCmd, setNativeMenu, type Entry, type MenuDef } from "./menu";
 import { MenuChevron, MenuGlyph } from "./menuIcons";
 
-export function MenuBar({
-  appName,
-  menus,
-  onError,
-  compact = false,
-  quick,
-}: {
-  appName: string;
-  menus: MenuDef[];
-  onError: (e: unknown) => void;
-  compact?: boolean;
-  /** Compact only: the one list the ☰ button opens (shortcuts still come from `menus`). */
-  quick?: Entry[];
-}) {
+export function MenuBar({ appName, menus, onError, compact = false }: { appName: string; menus: MenuDef[]; onError: (e: unknown) => void; compact?: boolean }) {
   const [open, setOpen] = useState<number | null>(null);
-  // What the open menu index points into: the menus, or the single quick list.
-  const nav = useMemo<MenuDef[]>(() => (compact && quick ? [{ label: appName, items: quick }] : menus), [compact, quick, appName, menus]);
   const [hot, setHot] = useState(-1);
   const bar = useRef<HTMLDivElement>(null);
   // Keep the latest menus for the key handler without re-binding it.
@@ -102,8 +86,8 @@ export function MenuBar({
     if (open === -1) {
       const onTop = (e: KeyboardEvent) => {
         if (e.key === "Escape") setOpen(null);
-        else if (e.key === "ArrowDown") setHot((hot + 1) % nav.length);
-        else if (e.key === "ArrowUp") setHot((hot - 1 + nav.length) % nav.length);
+        else if (e.key === "ArrowDown") setHot((hot + 1) % menus.length);
+        else if (e.key === "ArrowUp") setHot((hot - 1 + menus.length) % menus.length);
         else if ((e.key === "Enter" || e.key === "ArrowRight") && hot >= 0) {
           setOpen(hot);
           setHot(-1);
@@ -114,7 +98,7 @@ export function MenuBar({
       window.addEventListener("keydown", onTop, true);
       return () => window.removeEventListener("keydown", onTop, true);
     }
-    const items = nav[open].items;
+    const items = menus[open].items;
     const pickable = (e: Entry) => isCmd(e) && (!e.enabled || e.enabled());
     const onKey = (e: KeyboardEvent) => {
       const step = (dir: 1 | -1) => {
@@ -128,10 +112,10 @@ export function MenuBar({
       else if (e.key === "ArrowDown") step(1);
       else if (e.key === "ArrowUp") step(-1);
       else if (e.key === "ArrowRight") {
-        setOpen((open + 1) % nav.length);
+        setOpen((open + 1) % menus.length);
         setHot(-1);
       } else if (e.key === "ArrowLeft") {
-        setOpen((open - 1 + nav.length) % nav.length);
+        setOpen((open - 1 + menus.length) % menus.length);
         setHot(-1);
       } else if (e.key === "Enter" && hot >= 0) {
         const it = items[hot];
@@ -146,7 +130,7 @@ export function MenuBar({
     // Capture: runs before the shortcut handler and text fields.
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [open, hot, nav, onError]);
+  }, [open, hot, menus, onError]);
 
   if (isMac) return null;
 
@@ -163,7 +147,7 @@ export function MenuBar({
             title="Menu (Alt)"
             onMouseDown={(e) => {
               e.preventDefault();
-              setOpen(open === null ? (quick ? 0 : -1) : null);
+              setOpen(open === null ? -1 : null);
               setHot(-1);
             }}
           >
@@ -171,30 +155,8 @@ export function MenuBar({
               <path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </button>
-          {open === -1 && (
-            <div className="menu-pop" role="menu">
-              {menus.map((m, i) => (
-                <button
-                  key={m.label}
-                  className={hot === i ? "menu-row hot" : "menu-row"}
-                  role="menuitem"
-                  aria-haspopup="menu"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onMouseEnter={() => setHot(i)}
-                  onClick={() => {
-                    setOpen(i);
-                    setHot(-1);
-                  }}
-                >
-                  <span className="menu-check" />
-                  <span className="menu-label">{m.label}</span>
-                  <MenuChevron />
-                </button>
-              ))}
-            </div>
-          )}
-          {open !== null && open >= 0 && quick && <MenuList items={nav[open].items} hot={hot} setHot={setHot} close={() => setOpen(null)} onError={onError} />}
-          {open !== null && open >= 0 && !quick && (
+          {open === -1 && <MenuList items={menus.map((m) => ({ label: m.label, items: m.items }))} hot={hot} setHot={setHot} close={() => setOpen(null)} onError={onError} />}
+          {open !== null && open >= 0 && (
             <MenuList items={menus[open].items} hot={hot} setHot={setHot} close={() => setOpen(null)} onError={onError} title={menus[open].label} onBack={() => (setOpen(-1), setHot(-1))} />
           )}
         </div>
@@ -271,12 +233,15 @@ function MenuList({
           return (
             <div
               key={e.label}
-              className={subOpen === i ? "menu-row has-sub hot" : "menu-row has-sub"}
+              className={subOpen === i || hot === i ? "menu-row has-sub hot" : "menu-row has-sub"}
               onMouseEnter={() => {
                 setSubOpen(i);
                 setHot(i);
               }}
               onMouseLeave={() => setSubOpen(-1)}
+              onMouseDown={(ev) => ev.preventDefault()}
+              // A click opens it too (clicks inside the fly-out bubble here harmlessly).
+              onClick={() => setSubOpen(i)}
               role="menuitem"
               aria-haspopup="menu"
             >
@@ -286,33 +251,6 @@ function MenuList({
               {subOpen === i && <MenuList items={e.items} hot={-1} setHot={() => undefined} close={close} onError={onError} sub />}
             </div>
           );
-        if (isRow(e)) {
-          const [first, ...rest] = e.buttons;
-          const button = (b: typeof first) => (
-            <button
-              key={b.id}
-              className="menu-btn"
-              aria-label={b.label}
-              title={b.accel ? `${b.label} (${accelText(b.accel)})` : b.label}
-              disabled={b.enabled ? !b.enabled() : false}
-              onMouseDown={(ev) => ev.preventDefault()}
-              onClick={() => void runCmd(b, onError)}
-            >
-              {b.icon && <MenuGlyph name={b.icon} />}
-            </button>
-          );
-          return (
-            <div key={e.label} className="menu-row menu-buttons" role="group" aria-label={e.label} onMouseEnter={() => setSubOpen(-1)}>
-              <span className="menu-check">{e.icon && <MenuGlyph name={e.icon} />}</span>
-              <span className="menu-label">{e.label}</span>
-              <span className="menu-btns">
-                {first && button(first)}
-                {e.value && <span className="menu-value">{e.value()}</span>}
-                {rest.map(button)}
-              </span>
-            </div>
-          );
-        }
         if (!isCmd(e)) return null;
         const disabled = e.enabled ? !e.enabled() : false;
         const checked = e.checked?.();
