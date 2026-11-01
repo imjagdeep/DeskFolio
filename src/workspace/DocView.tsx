@@ -1,5 +1,5 @@
 // The active document, drawn by pdf.js's viewer, with DeskFolio's own
-// markup tools on top.
+// markup tools on top and the page and zoom pill floating at its foot.
 
 import { useEffect, useRef } from "react";
 import type { OpenDoc } from "../lib/doc";
@@ -7,6 +7,7 @@ import { useMarkup } from "./markup";
 import { MarkupLayer } from "./MarkupLayer";
 import { RedactLayer } from "./RedactLayer";
 import { EditLayer } from "./EditLayer";
+import { PageControls } from "./StatusBar";
 import { mountViewer, useView } from "./viewer";
 
 export function DocView({ doc }: { doc: OpenDoc }) {
@@ -35,6 +36,7 @@ export function DocView({ doc }: { doc: OpenDoc }) {
       <MarkupLayer container={container} />
       <RedactLayer />
       <EditLayer container={container} />
+      <PageControls />
     </div>
   );
 }

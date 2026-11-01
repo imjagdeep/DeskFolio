@@ -3,7 +3,23 @@
 // document with a way back to it.
 
 import { useEffect, useRef } from "react";
-import { ChevronLeftIcon } from "../components/Icons";
+import logo from "../assets/logo.png";
+import {
+  BatchIcon,
+  ChevronLeftIcon,
+  CompressIcon,
+  ConvertIcon,
+  HomeIcon,
+  IdCardIcon,
+  InboxIcon,
+  MergeIcon,
+  OcrIcon,
+  SettingsIcon,
+  SplitIcon,
+  UserIcon,
+} from "../components/Icons";
+import { useAgreementNews } from "../lib/sign/watch";
+import { SideNav, type NavGroup } from "../shell/SideNav";
 import { PAGES, type Page } from "./pages";
 import { cycleTab, useDoc } from "../lib/doc";
 import { textFieldFocused } from "../shell/shell";
@@ -82,10 +98,43 @@ function ToolPage({ page }: { page: Page }) {
   }
 }
 
+// The dark sidebar beside Home and the file tools (no document open).
+function navGroups(newsCount: number): NavGroup<Page>[] {
+  return [
+    {
+      title: "DeskFolio",
+      items: [
+        { page: "home", label: "Home", Icon: HomeIcon },
+        { page: "agreements", label: "Agreements", Icon: InboxIcon, badge: newsCount > 0 ? <span className="count">{newsCount}</span> : undefined },
+        { page: "digitalids", label: "Digital IDs", Icon: IdCardIcon },
+      ],
+    },
+    {
+      title: "Tools",
+      items: [
+        { page: "merge", label: "Merge", Icon: MergeIcon },
+        { page: "split", label: "Split", Icon: SplitIcon },
+        { page: "compress", label: "Compress", Icon: CompressIcon },
+        { page: "convert", label: "Convert", Icon: ConvertIcon },
+        { page: "ocr", label: "Recognise text", Icon: OcrIcon },
+        { page: "batch", label: "Batch", Icon: BatchIcon },
+      ],
+    },
+    {
+      title: "You",
+      items: [
+        { page: "account", label: "DeskLab account", Icon: UserIcon },
+        { page: "settings", label: "Settings", Icon: SettingsIcon },
+      ],
+    },
+  ];
+}
+
 export function Workspace() {
   const doc = useDoc();
   const page = usePage();
   const view = useView();
+  const news = useAgreementNews();
   const content = useRef<HTMLElement>(null);
 
   // Each tool opens at the top.
@@ -119,18 +168,27 @@ export function Workspace() {
   const label = PAGES.find((p) => p.page === page)?.label ?? "";
   if (!doc) {
     return (
-      <div className="task">
-        {page !== "home" && (
-          <div className="task-bar">
-            <button className="with-icon" onClick={back}>
-              <ChevronLeftIcon size={14} /> Home
-            </button>
-            <strong className="task-title">{label}</strong>
-          </div>
-        )}
-        <main className="content" ref={content}>
-          <ToolPage page={page} />
-        </main>
+      <div className="home-frame">
+        <SideNav
+          appName="DeskFolio"
+          logo={logo}
+          groups={navGroups(news.length)}
+          page={page}
+          onNavigate={go}
+        />
+        <div className="task">
+          {page !== "home" && (
+            <div className="task-bar">
+              <button className="with-icon" onClick={back}>
+                <ChevronLeftIcon size={14} /> Home
+              </button>
+              <strong className="task-title">{label}</strong>
+            </div>
+          )}
+          <main className="content" ref={content}>
+            <ToolPage page={page} />
+          </main>
+        </div>
       </div>
     );
   }

@@ -550,3 +550,10 @@ export const IdCardIcon = (p: IconProps) => (
     <path d="M5.8 15.6a3.4 3.4 0 0 1 6.4 0M14.5 10h4M14.5 13.5h3" />
   </Svg>
 );
+
+export const UserIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="8.5" r="3.5" />
+    <path d="M5 19.5a7 7 0 0 1 14 0" />
+  </Svg>
+);
