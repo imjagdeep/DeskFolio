@@ -388,3 +388,11 @@ button.danger-fill:hover:not(:disabled) { background: #b71c1c; filter: none; }
 .home-frame > .task { flex: 1; padding: 0 12px 12px 12px; gap: 12px; }
 .ws-grid > .task { gap: 12px; }
 .task > .content { border-radius: 22px; }
+
+/* Agreements: filter tabs, search, and where the signed copy was kept */
+.ag-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 4px 0 12px; }
+.ag-tools input[type="search"] { flex: 1 1 240px; min-width: 200px; border-radius: 999px; }
+.ag-count { margin-left: 4px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.ag-kept { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0; padding: 10px 14px; border-radius: 14px; background: var(--green-soft); }
+.ag-kept > span { min-width: 0; overflow-wrap: anywhere; }
+.ag-altered { margin: 0; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--text); }

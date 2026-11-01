@@ -126,6 +126,17 @@ export async function keyFromLink(req: SignRequest, link: string): Promise<void>
   keepKey(req.id, key);
 }
 
+/** Which tab of Agreements a request shows under. */
+export type RequestGroup = "open" | "completed" | "closed";
+export const groupOf = (s: RequestStatus): RequestGroup => (s === "completed" ? "completed" : s === "declined" || s === "voided" || s === "expired" ? "closed" : "open");
+
+/** Search: the title, a person's name or email, or the start of the request id. */
+export function matchesQuery(r: SignRequest, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return r.title.toLowerCase().includes(q) || r.id.startsWith(q) || r.recipients.some((p) => p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q));
+}
+
 /** Who may sign now: same rule as the server (lowest open position, or everyone). */
 export function dueNow(recipients: { id: string; role: string; position: number; status: string }[], sequential: boolean) {
   const open = recipients.filter((r) => r.role === "signer" && r.status !== "signed" && r.status !== "declined");
@@ -201,7 +212,18 @@ export async function sendRequest(r: NewRequest): Promise<{ id: string; failed: 
 
 // ---------- following ----------
 
-export const listRequests = async () => (await call<{ envelopes: SignRequest[] }>("GET", "/v1/envelopes")).envelopes;
+/** Every request, newest first, a page at a time (an older server sends one page without `next`). */
+export async function listRequests(): Promise<SignRequest[]> {
+  const out: SignRequest[] = [];
+  let path = "/v1/envelopes";
+  for (let i = 0; i < 50; i++) {
+    const page = await call<{ envelopes: SignRequest[]; next?: string | null }>("GET", path);
+    out.push(...page.envelopes);
+    if (!page.next || !/^\d+$/.test(page.next)) break;
+    path = `/v1/envelopes/before/${page.next}`;
+  }
+  return out;
+}
 export const requestDetail = (id: string) => call<{ envelope: SignRequest; events: RequestEvent[]; auditIntact: boolean; auditHash: string | null }>("GET", `/v1/envelopes/${id}`);
 
 async function linksOf(id: string, key: Uint8Array) {
@@ -233,6 +255,38 @@ export async function finalCopy(req: SignRequest): Promise<Uint8Array> {
   const bytes = await unseal(key, await download(`/v1/envelopes/${req.id}/files/final`));
   if (req.finalSha256 && (await sha256Hex(bytes)) !== req.finalSha256) throw new Error("The signed copy doesn't match the one recorded at completion.");
   return bytes;
+}
+
+/**
+ * The signed pages as they should be: the original with every signer's
+ * entries, built here from the stored files (the certificate is a stand-in;
+ * only the original's pages are compared). Also returns the original's page count.
+ */
+export async function rebuildSigned(req: SignRequest): Promise<{ bytes: Uint8Array; pages: number }> {
+  const key = keyFor(req.id);
+  if (!key) throw new Error("This request's key isn't on this computer.");
+  const original = await unseal(key, await download(`/v1/envelopes/${req.id}/files/document`));
+  const fields = (await unsealJson(key, await download(`/v1/envelopes/${req.id}/files/fields`), isFieldsFile)).fields;
+  const signers = req.recipients.filter((r) => r.role === "signer");
+  const values: ValuesFile[] = [];
+  for (const s of signers) values.push(await unsealJson(key, await download(`/v1/envelopes/${req.id}/files/values-${s.id}`), isValuesFile));
+  const { PDFDocument } = await import("@cantoo/pdf-lib");
+  const pages = (await PDFDocument.load(original, { updateMetadata: false })).getPageCount();
+  const { buildFinal } = await import("./finalize");
+  const bytes = await buildFinal(original, fields, values, {
+    envelopeId: req.id,
+    title: req.title,
+    ownerName: "",
+    ownerEmail: "",
+    docSha256: req.docSha256,
+    signers: signers.map((s) => ({ id: s.id, name: s.name, email: s.email, signedAt: s.signedAt })),
+    events: [],
+    auditHash: null,
+    auditIntact: true,
+    verifyUrl: `${SIGN_BASE}/verify`,
+    completedAt: new Date(),
+  });
+  return { bytes, pages };
 }
 
 /**

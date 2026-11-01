@@ -4,8 +4,27 @@
 import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../components/Common";
 import { refreshAccount, useAccount } from "../account/account";
+import { api } from "../lib/api";
 import { openPath, saveBytes } from "../lib/doc";
-import { cancelRequest, deleteRequest, dueNow, finalCopy, finishHere, keyFor, keyFromLink, listRequests, progressCopy, requestDetail, resend, type RequestEvent, type SignRequest } from "../lib/sign/requests";
+import { alteredPage, keptPath, signedAgreementsDir } from "../lib/sign/archive";
+import {
+  cancelRequest,
+  deleteRequest,
+  dueNow,
+  finalCopy,
+  finishHere,
+  groupOf,
+  keyFor,
+  keyFromLink,
+  listRequests,
+  matchesQuery,
+  progressCopy,
+  requestDetail,
+  resend,
+  type RequestEvent,
+  type RequestGroup,
+  type SignRequest,
+} from "../lib/sign/requests";
 import { checkAgreements, dismissNews, takeWantedAgreement, useAgreementNews } from "../lib/sign/watch";
 import { toast, toastError } from "../lib/store";
 import { markupState } from "../workspace/markup";
@@ -49,6 +68,8 @@ export function Agreements() {
   const [list, setList] = useState<SignRequest[] | null>(null);
   // Coming from a Home card: that request opens straight away.
   const [open, setOpen] = useState<string | null>(() => takeWantedAgreement());
+  const [group, setGroup] = useState<RequestGroup | "all">("all");
+  const [query, setQuery] = useState("");
   const news = useAgreementNews();
   const reload = useCallback(() => {
     // Same call as the background check, so news shows here too.
@@ -88,9 +109,22 @@ export function Agreements() {
       </div>
     );
   }
+  const count = (g: RequestGroup) => list?.filter((r) => groupOf(r.status) === g).length ?? 0;
+  const shown = list?.filter((r) => (group === "all" || groupOf(r.status) === group) && matchesQuery(r, query)) ?? [];
+  const tabs: { id: RequestGroup | "all"; label: string; n: number }[] = [
+    { id: "all", label: "All", n: list?.length ?? 0 },
+    { id: "open", label: "Waiting", n: count("open") },
+    { id: "completed", label: "Completed", n: count("completed") },
+    { id: "closed", label: "Declined, expired or cancelled", n: count("closed") },
+  ];
+  const showFolder = () =>
+    void signedAgreementsDir()
+      .then((dir) => api.revealFile(dir))
+      .catch(toastError);
   return (
     <div className="page wide">
-      <PageHeader title="Agreements" subtitle="Documents you sent for signature with DeskLab Sign.">
+      <PageHeader title="Agreements" subtitle="Documents you sent for signature with DeskLab Sign. Signed copies are kept in Documents › DeskFolio › Signed agreements.">
+        <button onClick={showFolder}>Signed copies folder</button>
         <button onClick={reload}>Refresh</button>
       </PageHeader>
       {list === null && <div className="card muted">Loading…</div>}
@@ -100,8 +134,21 @@ export function Agreements() {
           <p className="muted small">Open a PDF, then Fill &amp; Sign › Request signatures. People sign in their browser; you get the signed copy with a certificate of completion.</p>
         </div>
       )}
+      {!!list?.length && (
+        <div className="ag-tools">
+          <div className="segmented" role="tablist" aria-label="Show requests">
+            {tabs.map((t) => (
+              <button key={t.id} role="tab" aria-selected={group === t.id} className={group === t.id ? "active" : undefined} onClick={() => setGroup(t.id)}>
+                {t.label} <span className="ag-count">{t.n}</span>
+              </button>
+            ))}
+          </div>
+          <input type="search" value={query} placeholder="Search by title, name, email or ID" aria-label="Search requests" onChange={(e) => setQuery(e.target.value)} />
+        </div>
+      )}
+      {!!list?.length && !shown.length && <div className="card muted">No requests match.</div>}
       <div className="ag-list">
-        {list?.map((r) => (
+        {shown.map((r) => (
           <div key={r.id} className={open === r.id ? "card ag-item on" : "card ag-item"}>
             <button className="ag-head" onClick={() => setOpen(open === r.id ? null : r.id)} aria-expanded={open === r.id}>
               <span className="ag-title">
@@ -129,6 +176,8 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
   const [intact, setIntact] = useState(true);
   const [busy, setBusy] = useState(false);
   const hasKey = !!keyFor(req.id);
+  const kept = keptPath(req.id);
+  const altered = alteredPage(req.id);
   useEffect(() => {
     requestDetail(req.id)
       .then((d) => {
@@ -247,8 +296,28 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
           </button>
         )}
       </div>
-      {!hasKey && !req.filesDeleted && <KeyFromEmail req={req} onDone={onChange} />}
-      {req.status === "completed" && req.filesDeleted && <p className="muted small">The files were deleted 30 days after completion; use the copy you saved.</p>}
+      {kept && (
+        <p className="ag-kept small">
+          <span>
+            Signed copy kept on this computer: <span className="selectable">{kept}</span>
+          </span>
+          <button className="link" onClick={() => void openPath(kept)}>
+            Open
+          </button>
+          <button className="link" onClick={() => void api.revealFile(kept).catch(toastError)}>
+            Show in folder
+          </button>
+        </p>
+      )}
+      {altered !== null && (
+        <p className="ag-altered small">
+          <b>This signed copy doesn't match what was signed.</b> DeskFolio rebuilt the document from the original and each person's entries, and page {altered} of the signed copy is different, so it wasn't kept. Don't rely on it; ask the signers to sign again.
+        </p>
+      )}
+      {req.status === "completed" && !kept && altered === null && !req.filesDeleted && hasKey && <p className="muted small">The signed copy is being checked and kept on this computer (Documents › DeskFolio › Signed agreements).</p>}
+      {!hasKey && !req.filesDeleted && !kept && <KeyFromEmail req={req} onDone={onChange} />}
+      {req.status === "completed" && req.filesDeleted && !kept && <p className="muted small">The files were deleted 30 days after completion; use the copy you saved.</p>}
+      <p className="muted small selectable">Request ID {req.id}</p>
 
       <details className="ag-history">
         <summary>History{intact ? "" : " (record NOT intact)"}</summary>
