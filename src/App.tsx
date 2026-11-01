@@ -22,7 +22,7 @@ import { Workspace } from "./workspace/Workspace";
 
 export default function App() {
   const page = usePage();
-  const menus = useAppMenus(page, go);
+  const { menus, quick } = useAppMenus(page, go);
   const info = useAppInfo();
   const doc = useDoc();
   const theme = useTheme();
@@ -115,7 +115,7 @@ export default function App() {
   return (
     <div className="app-frame">
       <div className="top-row">
-        <MenuBar appName="DeskFolio" menus={menus} onError={toastError} compact />
+        <MenuBar appName="DeskFolio" menus={menus} quick={quick} onError={toastError} compact />
         <TabStrip />
       </div>
       <div className="app app-workspace">

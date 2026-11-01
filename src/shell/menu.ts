@@ -29,7 +29,16 @@ export interface SubmenuDef {
   icon?: MenuIcon;
   items: Entry[];
 }
-export type Entry = Cmd | "-" | SubmenuDef;
+/** A label with small buttons at the end (Zoom  −  100%  +  ⛶), in-window menus only. */
+export interface ButtonRowDef {
+  label: string;
+  icon?: MenuIcon;
+  /** Shown after the first button ("100%"). */
+  value?: () => string;
+  /** Each needs an icon; its label is the button's name for screen readers. */
+  buttons: Cmd[];
+}
+export type Entry = Cmd | "-" | SubmenuDef | ButtonRowDef;
 export interface MenuDef {
   label: string;
   items: Entry[];
@@ -39,6 +48,7 @@ export const isMac = typeof navigator !== "undefined" && /Mac/i.test(navigator.p
 
 export const isCmd = (e: Entry): e is Cmd => typeof e === "object" && "run" in e;
 export const isSub = (e: Entry): e is SubmenuDef => typeof e === "object" && "items" in e && !("run" in e);
+export const isRow = (e: Entry): e is ButtonRowDef => typeof e === "object" && "buttons" in e;
 
 /** "Mod+Shift+S" → "Ctrl+Shift+S" (or "⇧⌘S" on a Mac). */
 export function accelText(accel: string): string {
@@ -74,6 +84,7 @@ export function allCommands(menus: MenuDef[]): { cmd: Cmd; path: string }[] {
     for (const e of items) {
       if (isCmd(e)) out.push({ cmd: e, path });
       else if (isSub(e)) walk(e.items, `${path} › ${e.label}`);
+      else if (isRow(e)) for (const b of e.buttons) out.push({ cmd: b, path: `${path} › ${e.label}` });
     }
   };
   for (const m of menus) walk(m.items, m.label);

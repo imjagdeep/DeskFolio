@@ -175,13 +175,6 @@ export function Workspace() {
           groups={navGroups(news.length)}
           page={page}
           onNavigate={go}
-          foot={
-            <>
-              <span className="dot on" />
-              <span>Everything stays on this computer.</span>
-            </>
-          }
-          footTitle="Nothing is uploaded"
         />
         <div className="task">
           {page !== "home" && (

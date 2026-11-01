@@ -1,4 +1,5 @@
-// DeskFolio's menus: File, Edit, View, Tools, Window, Help.
+// DeskFolio's menus: File, Edit, View, Tools, Window, Help, plus the
+// Chrome-style list behind the ☰ button, built from the same commands.
 
 import { exit } from "@tauri-apps/plugin-process";
 import { useEffect, useMemo, useState } from "react";
@@ -23,9 +24,9 @@ import {
 } from "./lib/doc";
 import { setTheme, toastError, useTheme, type Theme } from "./lib/store";
 import { checkAndDownload } from "./lib/updates";
-import type { Entry, MenuDef } from "./shell/menu";
+import { isCmd, isSub, type Entry, type MenuDef } from "./shell/menu";
 import type { MenuIcon } from "./shell/menuIcons";
-import { editCommand, isCompactSidebar, openShellDialog, pasteText, setZoom, textFieldFocused, toggleFullscreen, toggleSidebar, zoomStep } from "./shell/shell";
+import { editCommand, isCompactSidebar, openShellDialog, pasteText, setZoom, textFieldFocused, toggleFullscreen, toggleSidebar, useZoom, zoomStep } from "./shell/shell";
 import { focusSearch, togglePanel, usePanel } from "./workspace/panels";
 import { printDocument } from "./workspace/print";
 import { editAction, forgetView, rotateView, SCROLL, setDark, setScale, setScroll, setSpread, SPREAD, useView, zoom, goToPage } from "./workspace/viewer";
@@ -34,13 +35,20 @@ const PAGE_ICONS: Partial<Record<Page, MenuIcon>> = { organize: "pages", sign: "
 const LAB_NAMES: Record<string, string> = { deskzero: "DeskZero", deskmedic: "DeskMedic" };
 const fileName = (p: string) => p.split(/[\\/]/).pop() ?? p;
 
-export function useAppMenus(page: Page, go: (p: Page) => void): MenuDef[] {
+/** The command or submenu in `menu` with this id (or label, for a submenu). */
+function pick(menu: MenuDef, key: string): Entry[] {
+  const found = menu.items.find((e) => (isCmd(e) && e.id === key) || (isSub(e) && e.label === key));
+  return found ? [found] : [];
+}
+
+export function useAppMenus(page: Page, go: (p: Page) => void): { menus: MenuDef[]; quick: Entry[] } {
   const doc = useDoc();
   const tabs = useTabs();
   const recent = useRecent();
   const theme = useTheme();
   const panel = usePanel();
   const view = useView();
+  const windowZoom = useZoom();
   const [lab, setLab] = useState<LabTool[]>([]);
   useEffect(() => {
     api.desklabTools().then(setLab).catch(toastError);
@@ -225,7 +233,42 @@ export function useAppMenus(page: Page, go: (p: Page) => void): MenuDef[] {
         { id: "about", icon: "info", label: "About DeskFolio", run: () => openShellDialog("about") },
       ],
     };
-    return [file, edit, view_, tools, windowMenu, help];
+    // The ☰ list, like Chrome's: everyday commands first, then the rest in
+    // fly-out submenus, with zoom as one row.
+    const quick: Entry[] = [
+      ...pick(file, "open"),
+      ...pick(file, "Open recent"),
+      "-",
+      ...pick(file, "save-as"),
+      ...pick(file, "save-over"),
+      ...pick(file, "print"),
+      ...pick(file, "reveal"),
+      "-",
+      ...pick(edit, "undo"),
+      ...pick(edit, "find"),
+      "-",
+      {
+        label: "Zoom",
+        icon: "zoom-in",
+        value: () => `${Math.round((reading() ? view.scale : windowZoom) * 100)}%`,
+        buttons: [
+          { id: "q-zoom-out", icon: "zoom-out", label: "Zoom out", accel: "Mod+-", run: () => (reading() ? zoom(-1) : zoomStep(-1)) },
+          { id: "q-zoom-in", icon: "zoom-in", label: "Zoom in", accel: "Mod+=", run: () => (reading() ? zoom(1) : zoomStep(1)) },
+          { id: "q-fullscreen", icon: "fullscreen", label: "Full screen", accel: "F11", run: toggleFullscreen },
+        ],
+      },
+      "-",
+      { label: "Edit", icon: "rename", items: edit.items },
+      { label: "View", icon: "fit", items: view_.items },
+      { label: "Tools", icon: "wrench", items: tools.items },
+      { label: "Tabs", icon: "pages", items: [...windowMenu.items, "-", ...pick(file, "close"), ...pick(file, "close-all")] },
+      "-",
+      { label: "Help", icon: "help", items: help.items },
+      ...pick(file, "account"),
+      ...pick(file, "settings"),
+      ...pick(file, "exit"),
+    ];
+    return { menus: [file, edit, view_, tools, windowMenu, help], quick };
     // `tabs`, `panel`, `view` and `doc` re-create the menus so checks and greyed items stay current.
-  }, [page, go, recent, theme, lab, tabs, panel, view, doc]);
+  }, [page, go, recent, theme, lab, tabs, panel, view, doc, windowZoom]);
 }

@@ -204,3 +204,17 @@
 /* The top row already shows the app's icon and name. */
 .app-top ~ .app .sidebar .brand-logo,
 .app-top ~ .app .sidebar .brand-name { display: none; }
+
+/* ---------- ☰ list, Chrome-style: full-width rows, groups, fly-outs, a zoom row ---------- */
+.menubar.compact .menu-pop { min-width: 320px; padding: 8px 0; }
+.menubar.compact .menu-sub { top: -8px; left: calc(100% - 4px); }
+.menubar.compact .menu-row { height: 36px; padding: 0 18px; gap: 14px; border-radius: 0; }
+.menubar.compact .menu-sep { margin: 6px 0; }
+.menubar.compact .menu-accel { margin-left: 36px; }
+.menu-row.menu-buttons { height: 44px; }
+.menu-row.menu-buttons:hover { background: none; }
+.menu-btns { display: flex; align-items: center; gap: 4px; justify-self: end; }
+.menu-btn { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; border-radius: 999px; background: var(--well); box-shadow: none; color: var(--text); }
+.menu-btn:hover:not(:disabled) { background: var(--selected); }
+.menu-btn:nth-last-child(1):not(:nth-child(2)) { margin-left: 10px; }
+.menu-value { min-width: 50px; text-align: center; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
