@@ -12,6 +12,6 @@ describe("saved digital IDs", () => {
     expect(back.cert).toEqual(id.cert);
     await expect(openId(saved, "wrong horse")).rejects.toThrow("doesn't open");
     await expect(openId('{"cert":1}', "x")).rejects.toThrow("damaged");
-    await expect(sealId(id, "short")).rejects.toThrow("6 characters");
+    await expect(sealId(id, "short")).rejects.toThrow("10 characters");
   }, 60_000);
 });

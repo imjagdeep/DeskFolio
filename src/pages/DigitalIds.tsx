@@ -127,7 +127,7 @@ function IdCard({ id, onChange }: { id: IdSummary; onChange: () => void }) {
 function CreateForm({ onDone }: { onDone: () => void }) {
   const [f, setF] = useState({ name: "", email: "", organization: "", country: "", pw: "", pw2: "", kind: "RSA" as "RSA" | "ECDSA" });
   const [busy, setBusy] = useState(false);
-  const ok = f.name.trim() && f.pw.length >= 6 && f.pw === f.pw2;
+  const ok = f.name.trim() && f.pw.length >= 10 && f.pw === f.pw2;
   const create = async () => {
     setBusy(true);
     try {
@@ -166,7 +166,7 @@ function CreateForm({ onDone }: { onDone: () => void }) {
       </div>
       <div className="form-row">
         <label className="field">
-          <span>Password (at least 6 characters)</span>
+          <span>Password (at least 10 characters)</span>
           <input type="password" value={f.pw} autoComplete="new-password" onChange={(e) => setF({ ...f, pw: e.target.value })} />
         </label>
         <label className="field">
@@ -197,7 +197,7 @@ function ImportForm({ onDone }: { onDone: () => void }) {
     const p = await open({ title: "Digital ID file", filters: [{ name: "Digital ID", extensions: ["pfx", "p12"] }] });
     if (typeof p === "string") setPath(p);
   };
-  const needNew = pw.length < 6;
+  const needNew = pw.length < 10;
   const go = async () => {
     setBusy(true);
     try {
@@ -223,7 +223,7 @@ function ImportForm({ onDone }: { onDone: () => void }) {
       </label>
       {pw && needNew && (
         <label className="field">
-          <span>That password is short; choose one of at least 6 characters for DeskFolio's copy</span>
+          <span>That password is short; choose one of at least 10 characters for DeskFolio's copy</span>
           <input type="password" value={savePw} autoComplete="new-password" onChange={(e) => setSavePw(e.target.value)} />
         </label>
       )}
@@ -231,7 +231,7 @@ function ImportForm({ onDone }: { onDone: () => void }) {
         <span className="muted small">The file stays as it is; DeskFolio keeps its own locked copy.</span>
         <div className="page-actions">
           <button onClick={onDone}>Cancel</button>
-          <button className="primary" disabled={!path || !pw || (needNew && savePw.length < 6) || busy} onClick={() => void go()}>
+          <button className="primary" disabled={!path || !pw || (needNew && savePw.length < 10) || busy} onClick={() => void go()}>
             {busy ? "Importing…" : "Import"}
           </button>
         </div>

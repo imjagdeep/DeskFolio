@@ -110,6 +110,65 @@ fn signed_agreements_dir(app: AppHandle) -> CmdResult<String> {
     Ok(dir.to_string_lossy().into_owned())
 }
 
+// ---------- request keys (Send for signature) ----------
+//
+// The key that opens each request's files is kept in sign-keys.json in the
+// app's data folder, encrypted (AES-GCM, done in src/lib/sign/vault.ts) with a
+// key held in the system keychain. So a reset of the webview's storage loses
+// nothing, and the file alone is useless.
+
+const VAULT_SERVICE: &str = "DeskLab";
+const VAULT_ENTRY: &str = "deskfolio-sign-keys";
+
+fn vault_entry() -> CmdResult<keyring::Entry> {
+    keyring::Entry::new(VAULT_SERVICE, VAULT_ENTRY)
+        .map_err(|e| format!("the system keychain is not available: {e}"))
+}
+
+fn vault_file(app: &AppHandle) -> CmdResult<PathBuf> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("no app data folder: {e}"))?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("can't create {}: {e}", dir.display()))?;
+    Ok(dir.join("sign-keys.json"))
+}
+
+/// The vault key from the keychain (base64), or None before the first save.
+#[tauri::command]
+fn sign_vault_key() -> CmdResult<Option<String>> {
+    match vault_entry()?.get_password() {
+        Ok(k) => Ok(Some(k)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(format!("couldn't read the keychain: {e}")),
+    }
+}
+
+#[tauri::command]
+fn sign_vault_key_set(key: String) -> CmdResult<()> {
+    vault_entry()?
+        .set_password(&key)
+        .map_err(|e| format!("couldn't save to the keychain: {e}"))
+}
+
+/// The encrypted key file's text, or None when there is none yet.
+#[tauri::command]
+fn sign_keys_read(app: AppHandle) -> CmdResult<Option<String>> {
+    let path = vault_file(&app)?;
+    if !path.exists() {
+        return Ok(None);
+    }
+    let data = files::read(&path)?;
+    String::from_utf8(data)
+        .map(Some)
+        .map_err(|_| format!("{} is damaged", path.display()))
+}
+
+#[tauri::command]
+fn sign_keys_write(app: AppHandle, text: String) -> CmdResult<()> {
+    files::write_atomic(&vault_file(&app)?, text.as_bytes())
+}
+
 // ---------- OCR language packs (downloaded only on request, see ocrlang.rs) ----------
 
 /// The one HTTP client for things the user asks DeskFolio to fetch: OCR language
@@ -545,6 +604,10 @@ pub fn run() {
             digital_ids,
             digital_id_delete,
             signed_agreements_dir,
+            sign_vault_key,
+            sign_vault_key_set,
+            sign_keys_read,
+            sign_keys_write,
             ocr_langs,
             ocr_lang_download,
             ocr_lang_data,

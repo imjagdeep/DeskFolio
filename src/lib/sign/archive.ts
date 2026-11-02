@@ -6,10 +6,55 @@
 
 import { api } from "../api";
 import { firstDifferentPage } from "./check";
+import { timestampFile } from "./cms";
+import { sha256Hex } from "./envelope";
 import { finalCopy, keyFor, rebuildSigned, type SignRequest } from "./requests";
 
 const KEPT = "deskfolio-sign-kept";
 const ALTERED = "deskfolio-sign-altered";
+// Trusted timestamps for kept copies: off ("") unless the user picks a service.
+const STAMP_SERVICE = "deskfolio-sign-keep-timestamp";
+const STAMPED = "deskfolio-sign-stamped";
+
+export function keepTimestampService(): string {
+  try {
+    return localStorage.getItem(STAMP_SERVICE) ?? "";
+  } catch {
+    // Unreadable: off.
+    return "";
+  }
+}
+
+export function setKeepTimestampService(id: string) {
+  localStorage.setItem(STAMP_SERVICE, id);
+}
+
+/** Request id → the .tsr saved beside its kept copy. */
+function readStamped(): Record<string, string> {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(STAMPED) ?? "{}");
+    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+    return Object.fromEntries(Object.entries(v).filter((e): e is [string, string] => typeof e[1] === "string"));
+  } catch {
+    // Unreadable: kept copies are stamped again.
+    return {};
+  }
+}
+
+/** Where the trusted timestamp of this request's kept copy is, if it has one. */
+export const stampPath = (id: string): string | null => readStamped()[id] ?? null;
+
+/** "….pdf" → "….tsr", the authority's reply for that file. */
+export const stampFileName = (pdfPath: string) => pdfPath.replace(/\.pdf$/i, "") + ".tsr";
+
+async function stamp(id: string, path: string, data: Uint8Array, service: string) {
+  const reply = await timestampFile(data, (q) => api.timestampRequest(service, q));
+  const out = stampFileName(path);
+  await api.writeFile(out, reply);
+  const all = readStamped();
+  all[id] = out;
+  localStorage.setItem(STAMPED, JSON.stringify(all));
+}
 
 /** Request id → the first page of its signed copy that doesn't match what was signed. */
 function readAltered(): Record<string, number> {
@@ -78,7 +123,9 @@ let running: Promise<KeepResult> | null = null;
 export function keepSignedCopies(list: SignRequest[]): Promise<KeepResult> {
   if (running) return running;
   const todo = toKeep(list);
-  if (!todo.length) return Promise.resolve({ kept: [], altered: [] });
+  const service = keepTimestampService();
+  const unstamped = service ? list.filter((r) => r.finalSha256 && keptPath(r.id) && !stampPath(r.id)) : [];
+  if (!todo.length && !unstamped.length) return Promise.resolve({ kept: [], altered: [] });
   running = (async () => {
     const dir = await api.signedAgreementsDir();
     const out: KeepResult = { kept: [], altered: [] };
@@ -98,8 +145,22 @@ export function keepSignedCopies(list: SignRequest[]): Promise<KeepResult> {
         await api.writeFile(path, signed);
         remember(r.id, path);
         out.kept.push(r);
+        if (service) await stamp(r.id, path, signed, service).catch((e: unknown) => console.warn(`No timestamp for ${r.id} yet:`, e));
       } catch (e) {
         console.warn(`Couldn't keep the signed copy of ${r.id} yet:`, e);
+      }
+    }
+    // Copies kept before timestamps were turned on (or whose stamp failed).
+    for (const r of unstamped) {
+      const path = keptPath(r.id);
+      try {
+        if (!path) continue;
+        const data = await api.readFile(path);
+        // Only the copy as signed: not one changed (or replaced) since it was kept.
+        if ((await sha256Hex(data)) !== r.finalSha256) continue;
+        await stamp(r.id, path, data, service);
+      } catch (e) {
+        console.warn(`No timestamp for ${r.id} yet:`, e);
       }
     }
     return out;

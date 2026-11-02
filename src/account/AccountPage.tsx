@@ -312,7 +312,8 @@ function SignedIn({ toast }: { toast: (text: string, error?: boolean) => void })
           <h2>Delete account</h2>
           <p className="muted small">
             Deletes your DeskLab account and everything stored for it on DeskLab's server, straight away. Your apps and files on your
-            computers stay as they are.
+            computers stay as they are. For completed signature requests a short record stays (fingerprint, title, date, shortened
+            names) so signed copies can still be checked.
           </p>
           {!deleting ? (
             <button className="danger" onClick={() => setDeleting(true)}>Delete my account…</button>

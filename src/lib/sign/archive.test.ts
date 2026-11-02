@@ -1,6 +1,17 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { alteredPage, keptFileName, keptPath, toKeep } from "./archive";
-import { groupOf, matchesQuery, type SignRequest } from "./requests";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// The request keys, as the vault (keychain + file) would hand them out.
+let keys: Record<string, string> = {};
+vi.mock("./vault", () => ({
+  keyText: (id: string) => keys[id],
+  loadKeys: async () => undefined,
+  keepKey: async () => undefined,
+  dropKey: async () => undefined,
+}));
+
+const { alteredPage, keptFileName, keptPath, toKeep } = await import("./archive");
+const { groupOf, matchesQuery } = await import("./requests");
+import type { SignRequest } from "./requests";
 
 const req = (over: Partial<SignRequest> = {}): SignRequest => ({
   id: "3f2a9c1b-0000-4000-8000-000000000001",
@@ -39,6 +50,7 @@ const KEY = "A".repeat(43);
 
 // A Map-backed localStorage, so the tests don't depend on the environment's.
 beforeEach(() => {
+  keys = {};
   const data = new Map<string, string>();
   Object.defineProperty(globalThis, "localStorage", {
     configurable: true,
@@ -61,20 +73,20 @@ describe("kept signed copies", () => {
   });
 
   it("keeps only completed requests whose files are still there and whose key is on this computer", () => {
-    localStorage.setItem("deskfolio-sign-keys", JSON.stringify({ a: KEY, b: KEY, c: KEY }));
+    keys = { a: KEY, b: KEY, c: KEY };
     const list = [req({ id: "a" }), req({ id: "b", status: "sent" }), req({ id: "c", filesDeleted: true }), req({ id: "d" })];
     expect(toKeep(list).map((r) => r.id)).toEqual(["a"]);
   });
 
   it("doesn't keep (or check again) a copy that didn't match what was signed", () => {
-    localStorage.setItem("deskfolio-sign-keys", JSON.stringify({ a: KEY }));
+    keys = { a: KEY };
     localStorage.setItem("deskfolio-sign-altered", JSON.stringify({ a: 2 }));
     expect(alteredPage("a")).toBe(2);
     expect(toKeep([req({ id: "a" })])).toEqual([]);
   });
 
   it("doesn't keep a copy twice", () => {
-    localStorage.setItem("deskfolio-sign-keys", JSON.stringify({ a: KEY }));
+    keys = { a: KEY };
     localStorage.setItem("deskfolio-sign-kept", JSON.stringify({ a: "C:\\Docs\\a.pdf" }));
     expect(keptPath("a")).toBe("C:\\Docs\\a.pdf");
     expect(toKeep([req({ id: "a" })])).toEqual([]);
@@ -98,5 +110,20 @@ describe("Agreements filters", () => {
     expect(matchesQuery(r, "@example.com")).toBe(true);
     expect(matchesQuery(r, "3f2a9c")).toBe(true);
     expect(matchesQuery(r, "invoice")).toBe(false);
+  });
+});
+
+describe("trusted timestamps of kept copies", () => {
+  it("sit beside the copy, with the same name", async () => {
+    const { stampFileName } = await import("./archive");
+    expect(stampFileName("C:\Docs\Lease - signed 2026-11-01 - 3f2a9c1b.pdf")).toBe("C:\Docs\Lease - signed 2026-11-01 - 3f2a9c1b.tsr");
+    expect(stampFileName("/home/a/Lease.PDF")).toBe("/home/a/Lease.tsr");
+  });
+
+  it("are off until a service is picked", async () => {
+    const { keepTimestampService, setKeepTimestampService } = await import("./archive");
+    expect(keepTimestampService()).toBe("");
+    setKeepTimestampService("digicert");
+    expect(keepTimestampService()).toBe("digicert");
   });
 });
