@@ -6,7 +6,7 @@ import { PDFDocument, StandardFonts } from "@cantoo/pdf-lib";
 import * as asn1js from "asn1js";
 import * as pkijs from "pkijs";
 import { describe, expect, it } from "vitest";
-import { createSelfSigned, importPrivateKey } from "./cms";
+import { createSelfSigned, importPrivateKey, readTimestampFile, timestampFile } from "./cms";
 import { readSignatures, signPdf } from "./pades";
 
 const TST_INFO = "1.2.840.113549.1.9.16.1.4";
@@ -135,4 +135,25 @@ describe("trusted timestamps", () => {
     expect(s.intact).toBe(true);
     expect(s.timestamp?.intact).toBe(false);
   }, 60_000);
+});
+
+describe("a trusted timestamp for a whole file (kept signed copies)", () => {
+  it("stamps the file's SHA-256 and checks out against that file only", async () => {
+    const { tsa } = await fakeAuthority();
+    const file = new TextEncoder().encode("%PDF-1.7 signed copy");
+    const reply = await timestampFile(file, tsa);
+    const ok = await readTimestampFile(reply, file);
+    expect(ok.intact).toBe(true);
+    expect(ok.authority).toBe("Test Timestamp Authority");
+    expect(Math.abs(ok.time.getTime() - Date.now())).toBeLessThan(60_000);
+    const other = await readTimestampFile(reply, new TextEncoder().encode("%PDF-1.7 changed copy"));
+    expect(other.intact).toBe(false);
+  });
+
+  it("refuses a reply for another file, and reads a damaged .tsr as damaged", async () => {
+    const file = new TextEncoder().encode("%PDF-1.7 signed copy");
+    await expect(timestampFile(file, (await fakeAuthority("otherImprint")).tsa)).rejects.toThrow();
+    const reply = await timestampFile(file, (await fakeAuthority()).tsa);
+    expect((await readTimestampFile(reply.slice(0, 40), file)).intact).toBe(false);
+  });
 });

@@ -193,8 +193,8 @@ async function checkToken(token: pkijs.ContentInfo, sigValue: Uint8Array): Promi
   }
 }
 
-/** Ask the authority to timestamp `sigValue`; returns the checked token. */
-async function fetchTimestamp(sigValue: Uint8Array, timestamper: Timestamper): Promise<pkijs.ContentInfo> {
+/** Ask the authority to timestamp `sigValue`; returns the checked token and the raw reply. */
+async function fetchTimestamp(sigValue: Uint8Array, timestamper: Timestamper): Promise<{ token: pkijs.ContentInfo; reply: Uint8Array }> {
   const nonce = new Uint8Array(8);
   globalThis.crypto.getRandomValues(nonce);
   nonce[0] = (nonce[0] & 0x3f) | 0x40; // positive and no leading zero byte, so it round-trips exactly
@@ -225,7 +225,28 @@ async function fetchTimestamp(sigValue: Uint8Array, timestamper: Timestamper): P
   const check = await checkToken(token, sigValue);
   if (!check.intact) throw new Error(check.problem ?? "The timestamp didn't check out.");
   if (check.tst?.nonce && !check.tst.nonce.isEqual(nonceInt)) throw new Error("The timestamp answers a different request.");
-  return token;
+  return { token, reply };
+}
+
+/**
+ * A trusted timestamp for a whole file (RFC 3161, SHA-256 of the file): the
+ * authority's checked reply, to save beside it as a .tsr. Anyone can check it
+ * without DeskFolio (`openssl ts -verify -data <file> -in <file>.tsr ...`).
+ */
+export async function timestampFile(data: Uint8Array, timestamper: Timestamper): Promise<Uint8Array> {
+  return (await fetchTimestamp(data, timestamper)).reply;
+}
+
+/** Read a .tsr saved by timestampFile() and check it stamps `data`. */
+export async function readTimestampFile(reply: Uint8Array, data: Uint8Array): Promise<TimestampInfo> {
+  try {
+    const token = pkijs.TimeStampResp.fromBER(buf(reply)).timeStampToken;
+    if (!token) throw new Error("no token");
+    const c = await checkToken(token, data);
+    return { time: c.time, authority: c.authority, intact: c.intact, ...(c.problem ? { problem: c.problem } : {}) };
+  } catch {
+    return { time: new Date(NaN), authority: "", intact: false, problem: "The timestamp is damaged." };
+  }
 }
 
 /**
@@ -259,7 +280,7 @@ export async function signDetached(data: Uint8Array, cert: Uint8Array, chain: Ui
   await sd.sign(key, 0, "SHA-256");
   if (timestamper) {
     const si = sd.signerInfos[0];
-    const token = await fetchTimestamp(new Uint8Array(si.signature.valueBlock.valueHexView), timestamper);
+    const { token } = await fetchTimestamp(new Uint8Array(si.signature.valueBlock.valueHexView), timestamper);
     si.unsignedAttrs = new pkijs.SignedAndUnsignedAttributes({
       type: 1,
       attributes: [new pkijs.Attribute({ type: OID.signatureTimeStampToken, values: [token.toSchema()] })],

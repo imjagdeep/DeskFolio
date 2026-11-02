@@ -40,7 +40,7 @@ async function wrapKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
 
 /** The saved form of an ID (the private key encrypted with `password`). */
 export async function sealId(m: IdMaterial, password: string): Promise<string> {
-  if (password.length < 6) throw new Error("Use a password of at least 6 characters for your digital ID.");
+  if (password.length < 10) throw new Error("Use a password of at least 10 characters for your digital ID.");
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: buf(iv) }, await wrapKey(password, salt), buf(m.pkcs8)));

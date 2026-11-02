@@ -6,7 +6,7 @@ import { PageHeader } from "../components/Common";
 import { refreshAccount, useAccount } from "../account/account";
 import { api } from "../lib/api";
 import { openPath, saveBytes } from "../lib/doc";
-import { alteredPage, keptPath, signedAgreementsDir } from "../lib/sign/archive";
+import { alteredPage, keepTimestampService, keptPath, setKeepTimestampService, signedAgreementsDir, stampPath } from "../lib/sign/archive";
 import {
   cancelRequest,
   deleteRequest,
@@ -70,6 +70,8 @@ export function Agreements() {
   const [open, setOpen] = useState<string | null>(() => takeWantedAgreement());
   const [group, setGroup] = useState<RequestGroup | "all">("all");
   const [query, setQuery] = useState("");
+  const [stampWith, setStampWith] = useState(keepTimestampService);
+  const [services, setServices] = useState<[string, string][]>([]);
   const news = useAgreementNews();
   const reload = useCallback(() => {
     // Same call as the background check, so news shows here too.
@@ -80,6 +82,23 @@ export function Agreements() {
         setList([]);
       });
   }, []);
+  useEffect(() => {
+    api
+      .timestampServices()
+      .then(setServices)
+      .catch(() => setServices([]));
+  }, []);
+  const chooseStamp = (id: string) => {
+    setStampWith(id);
+    try {
+      setKeepTimestampService(id);
+    } catch (e) {
+      toastError(e);
+      return;
+    }
+    // Stamp the copies already kept, now rather than at the next check.
+    if (id) reload();
+  };
   useEffect(() => {
     refreshAccount()
       .then((s) => (s.signed_in ? reload() : setList([])))
@@ -144,6 +163,19 @@ export function Agreements() {
             ))}
           </div>
           <input type="search" value={query} placeholder="Search by title, name, email or ID" aria-label="Search requests" onChange={(e) => setQuery(e.target.value)} />
+          {services.length > 0 && (
+            <label className="ag-stamp small" title="Sends only the signed copy's fingerprint (SHA-256) to the service you pick, which returns a dated, signed receipt (.tsr) kept next to the copy. It proves the copy existed unchanged at that time, without relying on DeskLab.">
+              Trusted timestamp for kept copies
+              <select value={services.some(([id]) => id === stampWith) ? stampWith : ""} onChange={(e) => chooseStamp(e.target.value)}>
+                <option value="">Off</option>
+                {services.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
       )}
       {!!list?.length && !shown.length && <div className="card muted">No requests match.</div>}
@@ -177,6 +209,7 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
   const [busy, setBusy] = useState(false);
   const hasKey = !!keyFor(req.id);
   const kept = keptPath(req.id);
+  const stamped = stampPath(req.id);
   const altered = alteredPage(req.id);
   useEffect(() => {
     requestDetail(req.id)
@@ -285,7 +318,7 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
             onClick={() =>
               void run(async () => {
                 const { ask } = await import("@tauri-apps/plugin-dialog");
-                const ok = await ask(`Delete "${req.title}" and its files from DeskLab Sign now? Copies people saved are not affected.`, { title: "Delete", kind: "warning", okLabel: "Delete", cancelLabel: "Keep it" });
+                const ok = await ask(`Delete "${req.title}" and its files from DeskLab Sign now? Copies people saved are not affected${req.status === "completed" ? ", and a short record stays so they can still be checked" : ""}.`, { title: "Delete", kind: "warning", okLabel: "Delete", cancelLabel: "Keep it" });
                 if (!ok) return;
                 await deleteRequest(req.id);
                 onChange();
@@ -307,6 +340,7 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
           <button className="link" onClick={() => void api.revealFile(kept).catch(toastError)}>
             Show in folder
           </button>
+          {stamped && <span className="muted">With a trusted timestamp beside it (.tsr).</span>}
         </p>
       )}
       {altered !== null && (

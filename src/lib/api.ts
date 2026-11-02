@@ -40,6 +40,11 @@ export const api = {
   digitalIdDelete: (name: string) => invoke<void>("digital_id_delete", { name }),
   /** Documents/DeskFolio/Signed agreements, created if needed. */
   signedAgreementsDir: () => invoke<string>("signed_agreements_dir"),
+  /** Request keys: the vault key in the system keychain, and the encrypted key file. */
+  signVaultKey: () => invoke<string | null>("sign_vault_key"),
+  signVaultKeySet: (key: string) => invoke<void>("sign_vault_key_set", { key }),
+  signKeysRead: () => invoke<string | null>("sign_keys_read"),
+  signKeysWrite: (text: string) => invoke<void>("sign_keys_write", { text }),
   revealFile: (path: string) => invoke<void>("reveal_file", { path }),
   /** Batch: the PDFs in a folder (sorted), and an output path that doesn't exist yet. */
   batchListPdfs: (dir: string, recursive: boolean) => invoke<string[]>("batch_list_pdfs", { dir, recursive }),

@@ -3,12 +3,12 @@
 // encrypted here with a key that is kept only on this computer.
 
 import { invoke } from "@tauri-apps/api/core";
+import { dropKey, keepKey, keyText, loadKeys } from "./vault";
 import {
   isFieldsFile,
   isLinksFile,
   isValuesFile,
   keyFromText,
-  keyToText,
   newKey,
   seal,
   sealJson,
@@ -77,35 +77,10 @@ const call = <T>(method: "GET" | "POST" | "DELETE", path: string, body?: unknown
 const upload = (path: string, bytes: Uint8Array) => invoke<void>("sign_upload", bytes, { headers: { "x-path": encodeURIComponent(path) } });
 const download = async (path: string) => new Uint8Array(await invoke<ArrayBuffer>("sign_download", { path }));
 
-// ---------- keys, kept on this computer only ----------
+// ---------- keys, kept on this computer only (see vault.ts) ----------
 
-const KEYS = "deskfolio-sign-keys";
-function readKeys(): Record<string, string> {
-  try {
-    const v: unknown = JSON.parse(localStorage.getItem(KEYS) ?? "{}");
-    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
-    return Object.fromEntries(Object.entries(v).filter((e): e is [string, string] => typeof e[1] === "string"));
-  } catch {
-    // Unreadable: no keys (requests still show, their files can't be opened here).
-    return {};
-  }
-}
-function keepKey(id: string, key: Uint8Array) {
-  const all = readKeys();
-  all[id] = keyToText(key);
-  localStorage.setItem(KEYS, JSON.stringify(all));
-}
-function dropKey(id: string) {
-  const all = readKeys();
-  delete all[id];
-  try {
-    localStorage.setItem(KEYS, JSON.stringify(all));
-  } catch {
-    // Not saved; harmless (the request is gone).
-  }
-}
 export function keyFor(id: string): Uint8Array | null {
-  const t = readKeys()[id];
+  const t = keyText(id);
   return t ? keyFromText(t) : null;
 }
 
@@ -123,7 +98,7 @@ export async function keyFromLink(req: SignRequest, link: string): Promise<void>
   } catch {
     throw new Error("That link belongs to another request, or it was cut short. Use the link from this request's email.");
   }
-  keepKey(req.id, key);
+  await keepKey(req.id, key);
 }
 
 /** Which tab of Agreements a request shows under. */
@@ -191,7 +166,7 @@ export async function sendRequest(r: NewRequest): Promise<{ id: string; failed: 
     recipients: r.people.map((p) => ({ name: p.name, email: p.email, role: p.role, position: p.position })),
   });
   // Kept before anything else: without it nobody (not even we) can open the files.
-  keepKey(created.id, key);
+  await keepKey(created.id, key);
   // The server answers in the order it was given.
   const idOf = new Map(r.people.map((p, i) => [p.local, created.recipients[i]?.id ?? ""]));
   const fields: FieldsFile = {
@@ -214,6 +189,8 @@ export async function sendRequest(r: NewRequest): Promise<{ id: string; failed: 
 
 /** Every request, newest first, a page at a time (an older server sends one page without `next`). */
 export async function listRequests(): Promise<SignRequest[]> {
+  // Keys first: the list's callers ask keyFor() right after.
+  await loadKeys();
   const out: SignRequest[] = [];
   let path = "/v1/envelopes";
   for (let i = 0; i < 50; i++) {
@@ -245,7 +222,7 @@ export const cancelRequest = (id: string, reason: string) => call("POST", `/v1/e
 
 export async function deleteRequest(id: string) {
   await call("DELETE", `/v1/envelopes/${id}`);
-  dropKey(id);
+  await dropKey(id);
 }
 
 /** The signed copy, checked against the hash recorded at completion. */
