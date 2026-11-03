@@ -28,6 +28,13 @@ interface Placed {
 type Tool = "text" | "date" | "check" | "cross" | { sig: Signature } | null;
 let nextId = 1;
 
+/** A tool or signature being dragged onto the page (follows the pointer). */
+interface Ghost {
+  tool: Exclude<Tool, null>;
+  x: number;
+  y: number;
+}
+
 function today() {
   return new Date().toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
@@ -50,8 +57,12 @@ export function Sign() {
   const [flatten, setFlatten] = useState(false);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<{ w: number; h: number } | null>(null);
+  const [ghost, setGhost] = useState<Ghost | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const area = useRef<HTMLDivElement>(null);
+  const sheet = useRef<HTMLDivElement>(null);
+  // Set when a press turned into a drag, so the click that follows doesn't also pick the tool.
+  const dragged = useRef(false);
 
   // Form fields of this version of the document.
   useEffect(() => {
@@ -110,23 +121,65 @@ export function Sign() {
     );
   }
 
-  const placeAt = (e: React.MouseEvent) => {
-    if (!tool || (e.target as HTMLElement).closest(".placed, .field-input")) return;
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = (e.clientX - r.left) / scale;
-    const y = (e.clientY - r.top) / scale;
+  // Put `t` on the page where the pointer is (screen coordinates).
+  const placeTool = (t: Exclude<Tool, null>, clientX: number, clientY: number) => {
+    const el = sheet.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const x = (clientX - r.left) / scale;
+    const y = (clientY - r.top) / scale;
     let item: Placed;
-    if (tool === "text" || tool === "date") {
-      item = { id: nextId++, page: pageNo, kind: "text", x, y: y - 8, w: 180, h: 20, text: tool === "date" ? today() : "", fontSize: 12 };
-    } else if (tool === "check" || tool === "cross") {
-      item = { id: nextId++, page: pageNo, kind: tool, x: x - 7, y: y - 7, w: 14, h: 14 };
+    if (t === "text" || t === "date") {
+      item = { id: nextId++, page: pageNo, kind: "text", x, y: y - 8, w: 180, h: 20, text: t === "date" ? today() : "", fontSize: 12 };
+    } else if (t === "check" || t === "cross") {
+      item = { id: nextId++, page: pageNo, kind: t, x: x - 7, y: y - 7, w: 14, h: 14 };
     } else {
       const w = 150;
-      const h = (w * tool.sig.h) / tool.sig.w;
-      item = { id: nextId++, page: pageNo, kind: "image", x: x - w / 2, y: y - h / 2, w, h, dataUrl: tool.sig.dataUrl };
+      const h = (w * t.sig.h) / t.sig.w;
+      item = { id: nextId++, page: pageNo, kind: "image", x: x - w / 2, y: y - h / 2, w, h, dataUrl: t.sig.dataUrl };
     }
     setPlaced((p) => [...p, item]);
+  };
+
+  const placeAt = (e: React.MouseEvent) => {
+    if (!tool || (e.target as HTMLElement).closest(".placed, .field-input")) return;
+    placeTool(tool, e.clientX, e.clientY);
     if (tool !== "text") setTool(null);
+  };
+
+  // Drag a tool or signature from the toolbar onto the page. Pointer events, not
+  // HTML drag and drop: the app window takes those for files dropped from outside.
+  // A press without moving stays a normal click (pick the tool, then click the page).
+  const dragTool = (t: Exclude<Tool, null>, e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    const start = { x: e.clientX, y: e.clientY };
+    dragged.current = false;
+    const onMove = (ev: PointerEvent) => {
+      if (!dragged.current && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
+      dragged.current = true;
+      setGhost({ tool: t, x: ev.clientX, y: ev.clientY });
+    };
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setGhost(null);
+      if (!dragged.current) return;
+      const r = sheet.current?.getBoundingClientRect();
+      if (r && ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) {
+        placeTool(t, ev.clientX, ev.clientY);
+        setTool(null);
+      }
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+  // The click that ends a drag must not also pick the tool.
+  const pick = (t: Tool) => {
+    if (dragged.current) {
+      dragged.current = false;
+      return;
+    }
+    setTool(t);
   };
 
   const update = (id: number, patch: Partial<Placed>) => setPlaced((p) => p.map((it) => (it.id === id ? { ...it, ...patch } : it)));
@@ -213,23 +266,23 @@ export function Sign() {
 
       <div className="sign-toolbar">
         <div className="segmented">
-          <button className={toolIs("text") ? "active" : ""} onClick={() => setTool(toolIs("text") ? null : "text")}>
+          <button className={toolIs("text") ? "active" : ""} onPointerDown={(e) => dragTool("text", e)} onClick={() => pick(toolIs("text") ? null : "text")}>
             Text
           </button>
-          <button className={toolIs("date") ? "active" : ""} onClick={() => setTool("date")}>
+          <button className={toolIs("date") ? "active" : ""} onPointerDown={(e) => dragTool("date", e)} onClick={() => pick("date")}>
             Date
           </button>
-          <button className={toolIs("check") ? "active" : ""} onClick={() => setTool("check")} aria-label="Check mark">
+          <button className={toolIs("check") ? "active" : ""} onPointerDown={(e) => dragTool("check", e)} onClick={() => pick("check")} aria-label="Check mark">
             ✓
           </button>
-          <button className={toolIs("cross") ? "active" : ""} onClick={() => setTool("cross")} aria-label="Cross">
+          <button className={toolIs("cross") ? "active" : ""} onPointerDown={(e) => dragTool("cross", e)} onClick={() => pick("cross")} aria-label="Cross">
             ✕
           </button>
         </div>
         <div className="sig-strip">
           {sigs.map((s) => (
             <span key={s.id} className={sigActive(s) ? "sig-chip active" : "sig-chip"}>
-              <button title="Place this signature" onClick={() => setTool({ sig: s })}>
+              <button title="Drag onto the page, or click it and then click the page" onPointerDown={(e) => dragTool({ sig: s }, e)} onClick={() => pick({ sig: s })}>
                 <img src={s.dataUrl} alt="Saved signature" />
               </button>
               <button className="sig-del" title="Delete this signature" onClick={() => deleteSignature(s.id)}>
@@ -254,8 +307,8 @@ export function Sign() {
       </div>
       <p className="muted small">
         {tool
-          ? "Click on the page to place it. Drag to move, use the corner to resize."
-          : "Pick Text, Date, a mark or a signature, then click on the page. Form fields can be typed into directly."}
+          ? "Now click on the page where it goes. Drag to move, use the corner to resize."
+          : "Drag Text, Date, a mark or your signature onto the page, or click one and then click the page. Form fields can be typed into directly."}
       </p>
 
       <div className="sign-nav">
@@ -272,7 +325,8 @@ export function Sign() {
 
       <div className="sign-area" ref={area}>
         <div
-          className={tool ? "sign-sheet placing" : "sign-sheet"}
+          ref={sheet}
+          className={tool || ghost ? "sign-sheet placing" : "sign-sheet"}
           style={view ? { width: view.w * scale, height: view.h * scale } : undefined}
           onClick={placeAt}
         >
@@ -324,6 +378,22 @@ export function Sign() {
             ))}
         </div>
       </div>
+
+      {ghost && (
+        <div className="sign-ghost" style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">
+          {typeof ghost.tool === "object" ? (
+            <img src={ghost.tool.sig.dataUrl} alt="" style={{ width: 150 * scale }} />
+          ) : ghost.tool === "check" ? (
+            "✓"
+          ) : ghost.tool === "cross" ? (
+            "✕"
+          ) : ghost.tool === "date" ? (
+            today()
+          ) : (
+            "Text"
+          )}
+        </div>
+      )}
 
       {pad && (
         <SignaturePad

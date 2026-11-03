@@ -50,7 +50,7 @@ export function Crop() {
       <PageHeader title="Crop pages" subtitle="Trim the edges: scanner borders, wide margins, printer marks. The hidden part stays in the file." />
       <div className="tool-split">
         <div className="tool-form">
-          <div className="form-row">
+          <div className="form-row four">
             {SIDES.map((s) => (
               <label key={s.id} className="field">
                 <span>{s.label} (mm)</span>

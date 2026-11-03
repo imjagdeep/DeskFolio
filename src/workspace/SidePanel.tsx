@@ -180,6 +180,14 @@ function Search({ doc }: { doc: OpenDoc }) {
     setPagesHit(out);
   };
 
+  // Search as you type (a moment after the last key), and again when an option changes.
+  const runRef = useRef(run);
+  runRef.current = run;
+  useEffect(() => {
+    const t = window.setTimeout(() => void runRef.current(query), 300);
+    return () => window.clearTimeout(t);
+  }, [query, matchCase, whole]);
+
   const f = view.find;
   return (
     <div className="search-panel">

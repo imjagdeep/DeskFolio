@@ -97,6 +97,8 @@ interface Btn {
   big?: boolean;
   on?: boolean;
   off?: boolean;
+  /** Works on the open document: from a tool page, a click goes back to it first. */
+  needsView?: boolean;
   tip?: string;
 }
 interface Group {
@@ -141,6 +143,8 @@ const HIGHLIGHTS = HIGHLIGHT_COLORS.split(",").map((p) => {
   return { name, hex };
 });
 const WIDTHS = [1, 2, 3, 5, 8];
+/** Tools whose marks have a line width (the Line option shows only for these and Draw). */
+const LINE_TOOLS = new Set<string>(["square", "circle", "line", "arrow", "underline", "strikeout"]);
 const TEXT_SIZES = [8, 10, 12, 14, 18, 24, 32];
 
 /** Insert a blank page after the page on screen. */
@@ -261,7 +265,7 @@ export function Ribbon() {
               ))}
             </select>
           </label>
-        ) : (
+        ) : LINE_TOOLS.has(markup.tool ?? "") || view.mode === EDIT.draw ? (
           <label className="style-field">
             Line
             <select value={markup.width} onChange={(e) => pickWidth(Number(e.target.value))}>
@@ -272,7 +276,7 @@ export function Ribbon() {
               ))}
             </select>
           </label>
-        )}
+        ) : null}
       </div>
     );
   })();
@@ -283,7 +287,7 @@ export function Ribbon() {
       {
         label: "Zoom",
         items: [
-          { id: "actual", label: "Actual size", Icon: ActualSizeIcon, run: () => setScale("page-actual"), on: view.preset === "page-actual", off: !reading, tip: "Actual size (Ctrl+1)" },
+          { id: "actual", label: "Actual size", Icon: ActualSizeIcon, run: () => setScale("page-actual"), on: view.preset === "page-actual", needsView: true, tip: "Actual size (Ctrl+1)" },
         ],
       },
       {
@@ -295,7 +299,7 @@ export function Ribbon() {
             Icon: SinglePageIcon,
             run: () => (setSpread(SPREAD.none), setScroll(SCROLL.vertical)),
             on: view.spread === SPREAD.none && view.scroll === SCROLL.vertical,
-            off: !reading,
+            needsView: true,
           },
           {
             id: "two",
@@ -303,7 +307,7 @@ export function Ribbon() {
             Icon: TwoPagesIcon,
             run: () => (setSpread(SPREAD.odd), setScroll(SCROLL.vertical)),
             on: view.spread !== SPREAD.none,
-            off: !reading,
+            needsView: true,
           },
           {
             id: "page-by-page",
@@ -311,18 +315,18 @@ export function Ribbon() {
             Icon: ScrollIcon,
             run: () => setScroll(view.scroll === SCROLL.page ? SCROLL.vertical : SCROLL.page),
             on: view.scroll === SCROLL.page,
-            off: !reading,
+            needsView: true,
           },
-          { id: "rot-left", label: "Rotate left", Icon: RotateLeftIcon, run: () => rotateView(-1), off: !reading, tip: "Turn the view (the file is not changed)" },
-          { id: "rot-right", label: "Rotate right", Icon: RotateIcon, run: () => rotateView(1), off: !reading, tip: "Turn the view (the file is not changed)" },
+          { id: "rot-left", label: "Rotate left", Icon: RotateLeftIcon, run: () => rotateView(-1), needsView: true, tip: "Turn the view (the file is not changed)" },
+          { id: "rot-right", label: "Rotate right", Icon: RotateIcon, run: () => rotateView(1), needsView: true, tip: "Turn the view (the file is not changed)" },
         ],
       },
       {
         label: "Show",
         items: [
-          { id: "panel", label: "Side panel", Icon: PanelLeftIcon, run: () => setPanel(panel ? null : "pages"), on: panel !== null, off: !reading, tip: "Pages, bookmarks, comments and search (F4)" },
-          { id: "find", label: "Find", Icon: SearchIcon, run: () => setPanel("search"), on: panel === "search", off: !reading, tip: "Find text (Ctrl+F)" },
-          { id: "dark", label: "Reading mode", Icon: MoonIcon, run: () => setDark(!view.dark), on: view.dark, off: !reading, tip: "Light text on dark pages, easier at night" },
+          { id: "panel", label: "Side panel", Icon: PanelLeftIcon, run: () => setPanel(panel ? null : "pages"), on: panel !== null, needsView: true, tip: "Pages, bookmarks, comments and search (F4)" },
+          { id: "find", label: "Find", Icon: SearchIcon, run: () => setPanel("search"), on: panel === "search", needsView: true, tip: "Find text (Ctrl+F)" },
+          { id: "dark", label: "Reading mode", Icon: MoonIcon, run: () => setDark(!view.dark), on: view.dark, needsView: true, tip: "Light text on dark pages, easier at night" },
           { id: "full", label: "Full screen", Icon: FullScreenIcon, run: () => void toggleFullscreen(), tip: "Full screen (F11)" },
           { id: "print", label: "Print", Icon: PrintIcon, run: () => { if (doc) void printDocument(doc); }, tip: "Print (Ctrl+P)" },
         ],
@@ -332,33 +336,33 @@ export function Ribbon() {
       {
         label: "Mark up",
         items: [
-          { id: "select", label: "Select", Icon: CursorIcon, run: () => (clearOwnTool(), setEditMode(EDIT.none)), on: view.mode === EDIT.none && !markup.tool, off: !reading, tip: "Read and select text; click a mark to change it" },
-          { id: "highlight", label: "Highlight", Icon: HighlightIcon, run: pdfTool(EDIT.highlight), on: pdfOn(EDIT.highlight), off: !reading, tip: "Select text to highlight it, or drag anywhere" },
-          { id: "underline", label: "Underline", Icon: UnderlineIcon, run: ownTool("underline"), on: isOwn("underline"), off: !reading, tip: "Select text to underline it" },
-          { id: "strike", label: "Strike out", Icon: StrikeIcon, run: ownTool("strikeout"), on: isOwn("strikeout"), off: !reading, tip: "Select text to cross it out" },
+          { id: "select", label: "Select", Icon: CursorIcon, run: () => (clearOwnTool(), setEditMode(EDIT.none)), on: view.mode === EDIT.none && !markup.tool, needsView: true, tip: "Read and select text; click a mark to change it" },
+          { id: "highlight", label: "Highlight", Icon: HighlightIcon, run: pdfTool(EDIT.highlight), on: pdfOn(EDIT.highlight), needsView: true, tip: "Select text to highlight it, or drag anywhere" },
+          { id: "underline", label: "Underline", Icon: UnderlineIcon, run: ownTool("underline"), on: isOwn("underline"), needsView: true, tip: "Select text to underline it" },
+          { id: "strike", label: "Strike out", Icon: StrikeIcon, run: ownTool("strikeout"), on: isOwn("strikeout"), needsView: true, tip: "Select text to cross it out" },
         ],
       },
       {
         label: "Add",
         items: [
-          { id: "note", label: "Sticky note", Icon: NoteIcon, run: ownTool("note"), on: isOwn("note"), off: !reading, tip: "Click where the note goes" },
-          { id: "textbox", label: "Text box", Icon: TextBoxIcon, run: pdfTool(EDIT.text), on: pdfOn(EDIT.text), off: !reading, tip: "Click and type" },
-          { id: "draw", label: "Draw", Icon: PenIcon, run: pdfTool(EDIT.draw), on: pdfOn(EDIT.draw), off: !reading, tip: "Draw freehand" },
-          { id: "image", label: "Image", Icon: ImageIcon, run: pdfTool(EDIT.image), on: pdfOn(EDIT.image), off: !reading, tip: "Add a picture to the page" },
+          { id: "note", label: "Sticky note", Icon: NoteIcon, run: ownTool("note"), on: isOwn("note"), needsView: true, tip: "Click where the note goes" },
+          { id: "textbox", label: "Text box", Icon: TextBoxIcon, run: pdfTool(EDIT.text), on: pdfOn(EDIT.text), needsView: true, tip: "Click and type" },
+          { id: "draw", label: "Draw", Icon: PenIcon, run: pdfTool(EDIT.draw), on: pdfOn(EDIT.draw), needsView: true, tip: "Draw freehand" },
+          { id: "image", label: "Image", Icon: ImageIcon, run: pdfTool(EDIT.image), on: pdfOn(EDIT.image), needsView: true, tip: "Add a picture to the page" },
         ],
       },
       {
         label: "Shapes",
         items: [
-          { id: "rect", label: "Rectangle", Icon: RectIcon, run: ownTool("square"), on: isOwn("square"), off: !reading },
-          { id: "ellipse", label: "Ellipse", Icon: EllipseIcon, run: ownTool("circle"), on: isOwn("circle"), off: !reading },
-          { id: "line", label: "Line", Icon: LineIcon, run: ownTool("line"), on: isOwn("line"), off: !reading },
-          { id: "arrow", label: "Arrow", Icon: ArrowIcon, run: ownTool("arrow"), on: isOwn("arrow"), off: !reading },
+          { id: "rect", label: "Rectangle", Icon: RectIcon, run: ownTool("square"), on: isOwn("square"), needsView: true },
+          { id: "ellipse", label: "Ellipse", Icon: EllipseIcon, run: ownTool("circle"), on: isOwn("circle"), needsView: true },
+          { id: "line", label: "Line", Icon: LineIcon, run: ownTool("line"), on: isOwn("line"), needsView: true },
+          { id: "arrow", label: "Arrow", Icon: ArrowIcon, run: ownTool("arrow"), on: isOwn("arrow"), needsView: true },
         ],
       },
       {
         label: "Stamp",
-        items: [{ id: "stamp", label: "Stamp", Icon: StampIcon, run: ownTool("stamp"), on: isOwn("stamp"), off: !reading, tip: "Choose a stamp, then click the page" }],
+        items: [{ id: "stamp", label: "Stamp", Icon: StampIcon, run: ownTool("stamp"), on: isOwn("stamp"), needsView: true, tip: "Choose a stamp, then click the page" }],
         extra: (
           <div className="style-controls stamp-controls">
             <select aria-label="Stamp" value={markup.stamp} onChange={(e) => {
@@ -399,20 +403,20 @@ export function Ribbon() {
       {
         label: "Text",
         items: [
-          { id: "edit-text", label: "Edit text", Icon: TextEditIcon, run: ownTool("edittext"), on: isOwn("edittext"), off: !reading, big: true, tip: "Click a line to change its words" },
-          { id: "add-text", label: "Add text", Icon: TextBoxIcon, run: pdfTool(EDIT.text), on: pdfOn(EDIT.text), off: !reading, tip: "Click anywhere and type" },
+          { id: "edit-text", label: "Edit text", Icon: TextEditIcon, run: ownTool("edittext"), on: isOwn("edittext"), needsView: true, big: true, tip: "Click a line to change its words" },
+          { id: "add-text", label: "Add text", Icon: TextBoxIcon, run: pdfTool(EDIT.text), on: pdfOn(EDIT.text), needsView: true, tip: "Click anywhere and type" },
         ],
       },
       {
         label: "Images",
         items: [
-          { id: "edit-image", label: "Edit images", Icon: ImageEditIcon, run: ownTool("editimage"), on: isOwn("editimage"), off: !reading, big: true, tip: "Click an image to move, resize, replace or delete it" },
-          { id: "add-image", label: "Add image", Icon: ImageIcon, run: pdfTool(EDIT.image), on: pdfOn(EDIT.image), off: !reading, tip: "Put a picture on the page" },
+          { id: "edit-image", label: "Edit images", Icon: ImageEditIcon, run: ownTool("editimage"), on: isOwn("editimage"), needsView: true, big: true, tip: "Click an image to move, resize, replace or delete it" },
+          { id: "add-image", label: "Add image", Icon: ImageIcon, run: pdfTool(EDIT.image), on: pdfOn(EDIT.image), needsView: true, tip: "Put a picture on the page" },
         ],
       },
       {
         label: "Links",
-        items: [{ id: "link", label: "Link", Icon: LinkIcon, run: ownTool("link"), on: isOwn("link"), off: !reading, big: true, tip: "Drag an area to link it; click a link to remove it" }],
+        items: [{ id: "link", label: "Link", Icon: LinkIcon, run: ownTool("link"), on: isOwn("link"), needsView: true, big: true, tip: "Drag an area to link it; click a link to remove it" }],
       },
       { label: "Style", items: [], extra: markup.tool === null && view.mode === EDIT.text ? styleControls : null },
     ],
@@ -421,7 +425,7 @@ export function Ribbon() {
         label: "Arrange",
         items: [
           { id: "organize", label: "Organize pages", Icon: OrganizeIcon, run: tool("organize"), big: true, on: page === "organize", tip: "Reorder, rotate, delete, insert and extract pages" },
-          { id: "blank", label: "Blank page", Icon: BlankPageIcon, run: () => void addBlank(), off: !reading, tip: "Insert a blank page after this one" },
+          { id: "blank", label: "Blank page", Icon: BlankPageIcon, run: () => void addBlank(), needsView: true, tip: "Insert a blank page after this one" },
           { id: "extract", label: "Extract pages", Icon: ExtractIcon, run: () => go("organize"), tip: "Select pages in Organize, then Extract" },
         ],
       },
@@ -453,8 +457,8 @@ export function Ribbon() {
       {
         label: "Redact",
         items: [
-          { id: "redact-mark", label: "Mark area", Icon: RedactIcon, run: () => (setOwnTool("redact"), setPanel("redact")), on: isOwn("redact"), off: !reading, tip: "Drag over what must go" },
-          { id: "redact-find", label: "Find & redact", Icon: SearchIcon, run: () => setPanel("redact"), on: panel === "redact", off: !reading, tip: "Words, emails, phone and card numbers" },
+          { id: "redact-mark", label: "Mark area", Icon: RedactIcon, run: () => (setOwnTool("redact"), setPanel("redact")), on: isOwn("redact"), needsView: true, tip: "Drag over what must go" },
+          { id: "redact-find", label: "Find & redact", Icon: SearchIcon, run: () => setPanel("redact"), on: panel === "redact", needsView: true, tip: "Words, emails, phone and card numbers" },
         ],
       },
       {
@@ -560,12 +564,18 @@ export function Ribbon() {
               {g.items.map((b) => (
                 <button
                   key={b.id}
-                  className={`strip-btn${b.on ? " on" : ""}`}
+                  className={`strip-btn${b.on && (reading || !b.needsView) ? " on" : ""}`}
                   disabled={b.off}
                   title={b.tip ? `${b.label}: ${b.tip}` : b.label}
                   aria-label={b.label}
-                  aria-pressed={b.on}
-                  onClick={b.run}
+                  aria-pressed={b.on && (reading || !b.needsView)}
+                  onClick={() => {
+                    if (b.needsView && !reading) {
+                      // Back to the document first, then the tool (it acts on the page you see).
+                      go("view");
+                      window.setTimeout(b.run, 0);
+                    } else b.run();
+                  }}
                 >
                   <b.Icon size={19} />
                   {!compact && <span className="strip-label">{b.label}</span>}
