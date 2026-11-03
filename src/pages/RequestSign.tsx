@@ -114,6 +114,9 @@ function Composer({ doc, accountEmail }: { doc: OpenDoc; accountEmail: string })
   const [fields, setFields] = useState<Placed[]>([]);
   const [who, setWho] = useState<string>(people[0].local);
   const [kind, setKind] = useState<FieldKind>("signature");
+  // A field being dragged from the Fields card onto a page (follows the pointer).
+  const [ghost, setGhost] = useState<{ kind: FieldKind; x: number; y: number } | null>(null);
+  const kindDragged = useRef(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [title, setTitle] = useState(doc.name.replace(/\.pdf$/i, ""));
   const [message, setMessage] = useState("");
@@ -221,20 +224,57 @@ function Composer({ doc, accountEmail }: { doc: OpenDoc; accountEmail: string })
   };
 
   const placeAt = (page: number, e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget || !who) return;
-    const box = e.currentTarget.getBoundingClientRect();
-    const k = KINDS.find((x) => x.kind === kind) ?? KINDS[0];
+    if (e.target !== e.currentTarget) return;
+    placeKind(page, kind, e.currentTarget, e.clientX, e.clientY);
+  };
+
+  // Put a `fieldKind` field for the chosen person on `page`, centred on the pointer.
+  const placeKind = (page: number, fieldKind: FieldKind, pageEl: HTMLElement, clientX: number, clientY: number) => {
+    if (!who) return;
+    const box = pageEl.getBoundingClientRect();
+    const k = KINDS.find((x) => x.kind === fieldKind) ?? KINDS[0];
     const scale = (viewports[page]?.scale ?? 1);
     const w = k.size[0] * scale;
     const h = k.size[1] * scale;
-    const x = Math.max(0, Math.min(box.width - w, e.clientX - box.left - w / 2));
-    const y = Math.max(0, Math.min(box.height - h, e.clientY - box.top - h / 2));
+    const x = Math.max(0, Math.min(box.width - w, clientX - box.left - w / 2));
+    const y = Math.max(0, Math.min(box.height - h, clientY - box.top - h / 2));
     const a = toPdf(page, x, y + h);
     const b = toPdf(page, x + w, y);
     if (!a || !b) return;
-    const f: Placed = { local: nextId("f"), person: who, kind, page, rect: [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])], required: kind !== "checkbox", ...(kind === "text" ? { label: "" } : {}) };
-    setFields([...fields, f]);
+    const f: Placed = { local: nextId("f"), person: who, kind: fieldKind, page, rect: [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])], required: fieldKind !== "checkbox", ...(fieldKind === "text" ? { label: "" } : {}) };
+    setFields((all) => [...all, f]);
     setSelected(f.local);
+  };
+
+  // Drag a field kind onto a page (pointer events: the window keeps HTML drag and drop
+  // for files). A press without moving just picks the kind, as before.
+  const dragKind = (fieldKind: FieldKind, e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    const start = { x: e.clientX, y: e.clientY };
+    kindDragged.current = false;
+    const onMove = (ev: PointerEvent) => {
+      if (!kindDragged.current && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
+      kindDragged.current = true;
+      setGhost({ kind: fieldKind, x: ev.clientX, y: ev.clientY });
+    };
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setGhost(null);
+      if (!kindDragged.current) return;
+      setKind(fieldKind);
+      const pageEl = document.elementsFromPoint(ev.clientX, ev.clientY).find((el) => el instanceof HTMLElement && el.dataset.page !== undefined);
+      if (pageEl instanceof HTMLElement) placeKind(Number(pageEl.dataset.page), fieldKind, pageEl, ev.clientX, ev.clientY);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+  const pickKind = (fieldKind: FieldKind) => {
+    if (kindDragged.current) {
+      kindDragged.current = false;
+      return;
+    }
+    setKind(fieldKind);
   };
 
   const onPointerDown = (f: Placed, mode: "move" | "size", e: React.PointerEvent) => {
@@ -335,11 +375,7 @@ function Composer({ doc, accountEmail }: { doc: OpenDoc; accountEmail: string })
   const ordered = [...signers].sort((a, b) => a.position - b.position);
   return (
     <div className="page wide rs-compose">
-      <PageHeader title="Request signatures" subtitle="People sign in their browser; nothing to install. You get the signed copy with a certificate of completion.">
-        <button className="primary" disabled={busy || problems.length > 0} title={problems[0]} onClick={() => void send()}>
-          {busy ? "Sending…" : "Send"}
-        </button>
-      </PageHeader>
+      <PageHeader title="Request signatures" subtitle="People sign in their browser; nothing to install. You get the signed copy with a certificate of completion." />
       <div className="rs-grid">
         <aside className="rs-side">
           <section className="card">
@@ -446,10 +482,10 @@ function Composer({ doc, accountEmail }: { doc: OpenDoc; accountEmail: string })
 
           <section className="card">
             <h2>Fields</h2>
-            <p className="muted small">Pick a person and a field, then click on the page. Drag to move, use the corner to resize, Delete to remove.</p>
+            <p className="muted small">Pick a person, then drag a field onto the page (or pick the field and click the page). Drag to move, use the corner to resize, Delete to remove.</p>
             <div className="rs-kinds">
               {KINDS.map((k) => (
-                <button key={k.kind} className={kind === k.kind ? "rs-kind on" : "rs-kind"} onClick={() => setKind(k.kind)}>
+                <button key={k.kind} className={kind === k.kind ? "rs-kind on" : "rs-kind"} title="Drag onto the page, or pick it and click the page" onPointerDown={(e) => dragKind(k.kind, e)} onClick={() => pickKind(k.kind)}>
                   {k.label}
                 </button>
               ))}
@@ -522,7 +558,7 @@ function Composer({ doc, accountEmail }: { doc: OpenDoc; accountEmail: string })
 
         <div className="rs-pages" ref={pagesRef} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
           {viewports.map((vp, i) => (
-            <div key={i} className="rs-page" style={{ width: vp.width, height: vp.height }} onClick={(e) => placeAt(i, e)}>
+            <div key={i} className="rs-page" data-page={i} style={{ width: vp.width, height: vp.height }} onClick={(e) => placeAt(i, e)}>
               <PageCanvas doc={doc} index={i} viewport={vp} />
               {fields
                 .filter((f) => f.page === i)
@@ -543,16 +579,23 @@ function Composer({ doc, accountEmail }: { doc: OpenDoc; accountEmail: string })
                     </div>
                   );
                 })}
-              <span className="rs-page-no">{i + 1}</span>
+              <span className="rs-page-no">Page {i + 1}</span>
             </div>
           ))}
         </div>
       </div>
+      {ghost && (
+        <div className="sign-ghost" style={{ left: ghost.x, top: ghost.y, borderColor: color(who) }} aria-hidden="true">
+          {KINDS.find((k) => k.kind === ghost.kind)?.label}
+        </div>
+      )}
       {/* Always in view, wherever you are on the pages: what's missing, or who gets it. */}
       <div className="rs-sendbar">
         <span className={problems.length ? "rs-sendbar-text warn" : "rs-sendbar-text"}>
           {problems.length
-            ? `${problems[0]}${problems.length > 1 ? ` (+${problems.length - 1} more)` : ""}`
+            ? problems.length === 1
+              ? `To send: ${problems[0]}`
+              : `${problems.length} things to do before sending: ${problems.join(" ")}`
             : `Ready: ${ordered.map((p) => p.name.trim()).join(sequential && ordered.length > 1 ? ", then " : " and ")} ${ordered.length === 1 ? "gets" : "get"} a private link by email.`}
         </span>
         <button className="primary" disabled={busy || problems.length > 0} onClick={() => void send()}>
