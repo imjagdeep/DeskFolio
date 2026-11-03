@@ -17,7 +17,7 @@ import {
 import type { Page } from "../workspace/pages";
 import { activate, forgetRecent, openDialog, openPath, useRecent, useTabs } from "../lib/doc";
 import { fileName, parentDir } from "../lib/format";
-import { dismissNews, newsText, openAgreement, useAgreementNews } from "../lib/sign/watch";
+import { dismissNews, newsText, openAgreement, useAgreementNews, useWaiting } from "../lib/sign/watch";
 
 type Group = "pages" | "sign" | "files";
 type Tile = { page: Page; title: string; text: string; Icon: IconType; group: Group; needsDoc?: boolean };
@@ -45,11 +45,19 @@ function greeting(): string {
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
+/** "The first deadline is in 3 days." for the waiting card. */
+export function daysLeft(expiresAt: string, now = Date.now()): string {
+  const days = Math.ceil((new Date(expiresAt).getTime() - now) / 86_400_000);
+  if (days <= 0) return "One expires today.";
+  return days === 1 ? "The first deadline is tomorrow." : `The first deadline is in ${days} days.`;
+}
+
 /** The Home tab: open files, start a tool, pick up where you left off. */
 export function Home({ onNavigate }: { onNavigate: (p: Page) => void; onOpened: () => void }) {
   const recent = useRecent();
   const { docs } = useTabs();
   const news = useAgreementNews();
+  const waiting = useWaiting();
   const [group, setGroup] = useState<Group | "all">("all");
 
   // Tools that work on a document ask for one first, then open in its tab.
@@ -84,7 +92,7 @@ export function Home({ onNavigate }: { onNavigate: (p: Page) => void; onOpened: 
         <section className="home-news" aria-label="Agreements news">
           <div className="home-news-head">
             <span>Agreements</span>
-            {news.length > 0 && <span className="home-news-count">{news.length} new</span>}
+            {news.length > 0 ? <span className="home-news-count">{news.length} new</span> : waiting.count > 0 && <span className="home-news-count">{waiting.count} waiting</span>}
           </div>
           {latest ? (
             <>
@@ -102,6 +110,15 @@ export function Home({ onNavigate }: { onNavigate: (p: Page) => void; onOpened: 
                 <button className="ghost" onClick={() => dismissNews()}>
                   {news.length > 1 ? "Dismiss all" : "Dismiss"}
                 </button>
+              </div>
+            </>
+          ) : waiting.count > 0 && waiting.soonest ? (
+            <>
+              <p className="home-news-text">
+                {waiting.count === 1 ? `"${waiting.soonest.title}" is` : `${waiting.count} requests are`} waiting for signatures. {daysLeft(waiting.soonest.expiresAt)}
+              </p>
+              <div className="home-news-actions">
+                <button onClick={() => onNavigate("agreements")}>Open Agreements</button>
               </div>
             </>
           ) : (

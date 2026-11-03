@@ -56,6 +56,21 @@ function setNews(list: News[]) {
   writeJson(NEWS, list);
 }
 
+/** Requests still out for signature, for the Home card when there's no news. */
+export interface Waiting {
+  count: number;
+  /** The one whose deadline comes first. */
+  soonest: { id: string; title: string; expiresAt: string } | null;
+}
+const waitingStore = createStore<Waiting>({ count: 0, soonest: null });
+export const useWaiting = () => useSyncExternalStore(waitingStore.subscribe, waitingStore.get);
+
+export function summarizeWaiting(list: SignRequest[]): Waiting {
+  const open = list.filter((r) => r.status === "sent" || r.status === "signed").sort((a, b) => a.expiresAt.localeCompare(b.expiresAt));
+  const first = open[0];
+  return { count: open.length, soonest: first ? { id: first.id, title: first.title, expiresAt: first.expiresAt } : null };
+}
+
 /** You looked at it: forget the news about one request (or all). */
 export function dismissNews(id?: string) {
   setNews(id ? newsStore.get().filter((n) => n.id !== id) : []);
@@ -111,6 +126,7 @@ export async function checkAgreements(quiet = false): Promise<SignRequest[] | nu
   } catch {
     return null; // offline or signed out: try again later, quietly
   }
+  waitingStore.set(summarizeWaiting(list));
   const seen = readJson<Seen>(SEEN, {}, isRecord);
   const { news, seen: next } = diffRequests(list, seen);
   writeJson(SEEN, next);

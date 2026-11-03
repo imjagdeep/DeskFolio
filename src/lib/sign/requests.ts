@@ -42,6 +42,8 @@ export interface RequestRecipient {
   declinedAt: string | null;
   declineReason: string | null;
   remindedAt: string | null;
+  /** The sender gave this signer an access code (an older server doesn't say). */
+  hasAccessCode?: boolean;
 }
 
 export interface SignRequest {
@@ -129,6 +131,8 @@ export interface Person {
   email: string;
   role: "signer" | "cc";
   position: number;
+  /** Optional, signers only: the code you tell them yourself; the signing page asks for it. Never stored here. */
+  accessCode?: string;
 }
 
 export interface DraftField {
@@ -163,7 +167,7 @@ export async function sendRequest(r: NewRequest): Promise<{ id: string; failed: 
     reminderDays: r.reminderDays,
     expiresDays: r.expiresDays,
     docSha256: await sha256Hex(r.pdf),
-    recipients: r.people.map((p) => ({ name: p.name, email: p.email, role: p.role, position: p.position })),
+    recipients: r.people.map((p) => ({ name: p.name, email: p.email, role: p.role, position: p.position, ...(p.role === "signer" && p.accessCode?.trim() ? { accessCode: p.accessCode.trim() } : {}) })),
   });
   // Kept before anything else: without it nobody (not even we) can open the files.
   await keepKey(created.id, key);
@@ -219,6 +223,9 @@ export async function resend(req: SignRequest): Promise<number> {
 }
 
 export const cancelRequest = (id: string, reason: string) => call("POST", `/v1/envelopes/${id}/void`, { reason });
+
+/** Change how often reminders go out, or the deadline, while people are still signing. */
+export const changeSettings = (id: string, s: { reminderDays?: number; expiresAt?: string }) => call<{ ok: true; changed: string[] }>("POST", `/v1/envelopes/${id}/settings`, s);
 
 export async function deleteRequest(id: string) {
   await call("DELETE", `/v1/envelopes/${id}`);
