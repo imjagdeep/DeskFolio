@@ -10,6 +10,7 @@ import { refreshAccount, useAccount } from "../account/account";
 import { flushPending, useDoc, type OpenDoc } from "../lib/doc";
 import type { FieldKind } from "../lib/sign/envelope";
 import { sendRequest, type DraftField, type Person } from "../lib/sign/requests";
+import { applyTemplate, deleteTemplate, listTemplates, makeTemplate, saveTemplate, type Template } from "../lib/sign/templates";
 import { toast, toastError } from "../lib/store";
 import { markupState, setMarkup } from "../workspace/markup";
 import { go } from "../workspace/route";
@@ -125,6 +126,48 @@ function Composer({ doc, accountEmail }: { doc: OpenDoc; accountEmail: string })
   const [width, setWidth] = useState(720);
   const pagesRef = useRef<HTMLDivElement>(null);
   const viewports = useViewports(doc, width);
+  const [templates, setTemplates] = useState<Template[]>(listTemplates);
+  const [saving, setSaving] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [withContacts, setWithContacts] = useState(true);
+
+  const pickTemplate = (id: string) => {
+    const t = templates.find((x) => x.id === id);
+    if (!t) return;
+    const s = applyTemplate(t, doc.pdf.numPages, nextId);
+    setPeople(s.people);
+    setFields(s.fields);
+    setMessage(s.message);
+    setSequential(s.sequential);
+    setReminderDays(s.reminderDays);
+    setExpiresDays(s.expiresDays);
+    setWho(s.people.find((p) => p.role === "signer")?.local ?? "");
+    setSelected(null);
+    toast(s.dropped ? `"${t.name}" applied; ${s.dropped} field${s.dropped === 1 ? " was" : "s were"} past this PDF's last page and left out.` : `"${t.name}" applied. Check the names and emails, then send.`);
+  };
+  const keepTemplate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!templateName.trim()) return;
+    try {
+      saveTemplate(makeTemplate(templateName, { people, fields, message, sequential, reminderDays, expiresDays }, doc.pdf.numPages, withContacts));
+      setTemplates(listTemplates());
+      toast(`Template "${templateName.trim()}" saved on this computer.`);
+      setSaving(false);
+      setTemplateName("");
+    } catch (err) {
+      toastError(err);
+    }
+  };
+  const dropTemplate = async (t: Template) => {
+    const { ask } = await import("@tauri-apps/plugin-dialog");
+    if (!(await ask(`Delete the template "${t.name}"?`, { title: "Delete template", kind: "warning", okLabel: "Delete", cancelLabel: "Keep it" }))) return;
+    try {
+      deleteTemplate(t.id);
+      setTemplates(listTemplates());
+    } catch (err) {
+      toastError(err);
+    }
+  };
 
   useEffect(() => {
     const el = pagesRef.current;
@@ -247,13 +290,19 @@ function Composer({ doc, accountEmail }: { doc: OpenDoc; accountEmail: string })
     const emails = people.map((p) => `${p.email.trim().toLowerCase()}:${p.role}`);
     if (new Set(emails).size !== emails.length) out.push("Someone is in the list twice.");
     for (const s of signers) if (!fields.some((f) => f.person === s.local)) out.push(`Place at least one field for ${s.name.trim() || "each signer"}.`);
+    for (const s of signers) {
+      const code = s.accessCode?.trim() ?? "";
+      if (code && (code.length < 4 || code.length > 40)) out.push(`The access code for ${s.name.trim() || "a signer"} needs 4 to 40 characters.`);
+    }
     return [...new Set(out)];
   }, [title, fromName, people, signers, fields]);
 
   const send = async () => {
     const names = signers.map((s) => s.name.trim()).join(", ");
+    const coded = signers.filter((s) => s.accessCode?.trim()).map((s) => s.name.trim());
     const { ask } = await import("@tauri-apps/plugin-dialog");
-    const ok = await ask(`Send "${title.trim()}" for signature? ${names} will get an email from DeskLab Sign with a private link${sequential && signers.length > 1 ? ", one after another" : ""}.`, {
+    const codeNote = coded.length ? ` Tell ${coded.join(" and ")} ${coded.length === 1 ? "their" : "their own"} access code yourself; it isn't in the email and isn't saved anywhere.` : "";
+    const ok = await ask(`Send "${title.trim()}" for signature? ${names} will get an email from DeskLab Sign with a private link${sequential && signers.length > 1 ? ", one after another" : ""}.${codeNote}`, {
       title: "Send for signature",
       okLabel: "Send",
       cancelLabel: "Not yet",
@@ -294,6 +343,43 @@ function Composer({ doc, accountEmail }: { doc: OpenDoc; accountEmail: string })
       <div className="rs-grid">
         <aside className="rs-side">
           <section className="card">
+            <h2>Template</h2>
+            {templates.length > 0 ? (
+              <div className="rs-templates">
+                {templates.map((t) => (
+                  <div key={t.id} className="rs-template">
+                    <button className="rs-template-use" onClick={() => pickTemplate(t.id)} title={`${t.people.length} ${t.people.length === 1 ? "person" : "people"}, ${t.fields.length} fields, made on a ${t.pages}-page PDF`}>
+                      {t.name}
+                    </button>
+                    <button className="icon" title="Delete template" aria-label={`Delete template ${t.name}`} onClick={() => void dropTemplate(t)}>
+                      <CloseIcon size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted small">Send the same kind of document often? Set it up once, then save it as a template: people, fields, order, reminders and message.</p>
+            )}
+            {saving ? (
+              <form className="rs-save-template" onSubmit={keepTemplate}>
+                <input value={templateName} maxLength={60} placeholder="Template name, e.g. Lease" aria-label="Template name" autoFocus onChange={(e) => setTemplateName(e.target.value)} />
+                <label className="check-row">
+                  <input type="checkbox" checked={withContacts} onChange={(e) => setWithContacts(e.target.checked)} />
+                  <span>Include the names and emails</span>
+                </label>
+                <div className="row">
+                  <button className="primary" disabled={!templateName.trim()}>Save template</button>
+                  <button type="button" className="ghost" onClick={() => setSaving(false)}>Cancel</button>
+                </div>
+              </form>
+            ) : (
+              <button className="with-icon" onClick={() => setSaving(true)} disabled={!fields.length} title={fields.length ? undefined : "Place a field first"}>
+                <PlusIcon size={13} /> Save as template
+              </button>
+            )}
+          </section>
+
+          <section className="card">
             <h2>People</h2>
             {ordered.map((p, i) => (
               <div key={p.local} className={who === p.local ? "rs-person on" : "rs-person"} onClick={() => setWho(p.local)}>
@@ -301,6 +387,15 @@ function Composer({ doc, accountEmail }: { doc: OpenDoc; accountEmail: string })
                 <div className="rs-person-fields">
                   <input value={p.name} placeholder={`Signer ${i + 1} name`} aria-label="Name" onChange={(e) => setPerson(p.local, { name: e.target.value })} />
                   <input value={p.email} placeholder="Email" type="email" aria-label="Email" onChange={(e) => setPerson(p.local, { email: e.target.value })} />
+                  <input
+                    value={p.accessCode ?? ""}
+                    placeholder="Access code (optional)"
+                    aria-label="Access code"
+                    maxLength={40}
+                    autoComplete="off"
+                    title="Tell them this code yourself, by phone or in person. The signing page asks for it, so someone with only the email can't open the document."
+                    onChange={(e) => setPerson(p.local, { accessCode: e.target.value })}
+                  />
                 </div>
                 <div className="rs-person-actions">
                   {sequential && signers.length > 1 && (

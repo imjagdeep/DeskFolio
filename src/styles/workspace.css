@@ -269,6 +269,10 @@ button.danger-fill:hover:not(:disabled) { background: #b71c1c; filter: none; }
 .rs-side .card { display: flex; flex-direction: column; gap: 8px; }
 .rs-side h2 { margin: 0; }
 .rs-person { display: flex; gap: 8px; align-items: center; padding: 6px; border-radius: 8px; cursor: pointer; box-shadow: 0 0 0 0.5px var(--group-border); }
+.rs-templates { display: grid; gap: 4px; margin-bottom: 8px; }
+.rs-template { display: flex; align-items: center; gap: 4px; }
+.rs-template-use { flex: 1; min-width: 0; justify-content: flex-start; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-save-template { display: grid; gap: 8px; }
 .rs-person.on { box-shadow: 0 0 0 2px var(--accent); }
 .rs-person.cc { cursor: default; }
 .rs-person-fields { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
@@ -291,7 +295,11 @@ button.danger-fill:hover:not(:disabled) { background: #b71c1c; filter: none; }
 /* ---------- agreements ---------- */
 .ag-list { display: flex; flex-direction: column; gap: 10px; }
 .ag-item { padding: 0; }
-.ag-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; background: none; box-shadow: none; padding: 14px 16px; height: auto; text-align: left; }
+.ag-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; background: none; box-shadow: none; padding: 14px 16px; height: auto; text-align: left; border-radius: var(--radius-card); flex: 1; min-width: 0; }
+.ag-row { display: flex; align-items: center; }
+.ag-row .ag-pick { margin: 0 0 0 16px; flex: none; }
+.ag-pick-space { display: inline-block; width: 18px; height: 18px; }
+.ag-bulk { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 6px 10px; }
 .ag-title { display: flex; flex-direction: column; min-width: 0; }
 .ag-status { font-size: 12px; padding: 3px 10px; border-radius: 99px; background: var(--hover); white-space: nowrap; }
 .ag-status.ok { background: var(--green-soft); color: var(--green); }
@@ -300,6 +308,9 @@ button.danger-fill:hover:not(:disabled) { background: #b71c1c; filter: none; }
 .ag-detail { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px; }
 .ag-people { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .ag-people li { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid var(--sep); }
+.ag-code { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--well); color: var(--text-2); font-weight: 600; }
+.ag-deadline { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--sep); }
+.ag-deadline .field { margin: 0; }
 .ag-pill { font-size: 12px; }
 .ag-pill.signed { color: var(--green); }
 .ag-pill.declined { color: var(--red); }
@@ -398,3 +409,12 @@ button.danger-fill:hover:not(:disabled) { background: #b71c1c; filter: none; }
 .ag-kept { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0; padding: 10px 14px; border-radius: 14px; background: var(--green-soft); }
 .ag-kept > span { min-width: 0; overflow-wrap: anywhere; }
 .ag-altered { margin: 0; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--text); }
+
+/* Picking rows from a list: a real checkbox, not the settings switch. */
+input[type="checkbox"].pick { width: 18px; height: 18px; border-radius: 6px; background: var(--group); box-shadow: inset 0 0 0 1.5px var(--text-3); transition: background 0.12s; }
+input[type="checkbox"].pick::after { top: 3px; left: 6px; width: 4px; height: 8px; border-radius: 0; background: none; box-shadow: none; border: solid var(--accent-text); border-width: 0 2px 2px 0; transform: rotate(45deg); opacity: 0; transition: none; }
+input[type="checkbox"].pick:checked { background: var(--accent); box-shadow: none; }
+input[type="checkbox"].pick:checked::after { background: none; opacity: 1; transform: rotate(45deg); }
+input[type="checkbox"].pick:indeterminate { background: var(--accent); box-shadow: none; }
+input[type="checkbox"].pick:indeterminate::after { top: 8px; left: 4px; width: 10px; height: 0; border-width: 0 0 2px 0; transform: none; opacity: 1; }
+input[type="checkbox"].pick:focus-visible { box-shadow: 0 0 0 3px var(--focus); }

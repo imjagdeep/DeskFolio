@@ -9,6 +9,7 @@ import { openPath, saveBytes } from "../lib/doc";
 import { alteredPage, keepTimestampService, keptPath, setKeepTimestampService, signedAgreementsDir, stampPath } from "../lib/sign/archive";
 import {
   cancelRequest,
+  changeSettings,
   deleteRequest,
   dueNow,
   finalCopy,
@@ -25,6 +26,7 @@ import {
   type RequestGroup,
   type SignRequest,
 } from "../lib/sign/requests";
+import { historyCsv } from "../lib/sign/history";
 import { checkAgreements, dismissNews, takeWantedAgreement, useAgreementNews } from "../lib/sign/watch";
 import { toast, toastError } from "../lib/store";
 import { markupState } from "../workspace/markup";
@@ -47,6 +49,7 @@ const EVENT: Record<string, string> = {
   resent: "Invitation emailed again",
   opened: "Opened",
   reminded: "Reminder emailed",
+  changed: "Deadline or reminders changed",
   signed: "Signed",
   "all-signed": "Everyone signed",
   completed: "Completed",
@@ -70,6 +73,9 @@ export function Agreements() {
   const [open, setOpen] = useState<string | null>(() => takeWantedAgreement());
   const [group, setGroup] = useState<RequestGroup | "all">("all");
   const [query, setQuery] = useState("");
+  // Closed requests picked for deleting together.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
   const [stampWith, setStampWith] = useState(keepTimestampService);
   const [services, setServices] = useState<[string, string][]>([]);
   const news = useAgreementNews();
@@ -136,6 +142,46 @@ export function Agreements() {
     { id: "completed", label: "Completed", n: count("completed") },
     { id: "closed", label: "Declined, expired or cancelled", n: count("closed") },
   ];
+  const closedShown = shown.filter((r) => !["sent", "signed"].includes(r.status));
+  const pickedShown = closedShown.filter((r) => picked.has(r.id));
+  const toggle = (id: string) => setPicked((s0) => {
+    const s1 = new Set(s0);
+    if (s1.has(id)) s1.delete(id);
+    else s1.add(id);
+    return s1;
+  });
+  const exportCsv = () => {
+    if (!list?.length) return;
+    const day = new Date().toISOString().slice(0, 10);
+    void saveBytes(new TextEncoder().encode(historyCsv(shown.length ? shown : list)), `Agreements ${day}.csv`, "CSV", "csv");
+  };
+  const deletePicked = async () => {
+    const targets = pickedShown;
+    if (!targets.length) return;
+    const { ask } = await import("@tauri-apps/plugin-dialog");
+    const completed = targets.filter((r) => r.status === "completed").length;
+    const ok = await ask(
+      `Delete ${targets.length} request${targets.length === 1 ? "" : "s"} and their files from DeskLab Sign now? Copies people saved, and the signed copies kept on this computer, are not affected${completed ? `; the ${completed} completed one${completed === 1 ? " keeps" : "s keep"} a short record so copies can still be checked` : ""}.`,
+      { title: "Delete requests", kind: "warning", okLabel: `Delete ${targets.length}`, cancelLabel: "Keep them" },
+    );
+    if (!ok) return;
+    setDeleting(true);
+    let done = 0;
+    try {
+      for (const r of targets) {
+        await deleteRequest(r.id);
+        done++;
+      }
+      toast(`Deleted ${done} request${done === 1 ? "" : "s"}.`);
+    } catch (e) {
+      toastError(e);
+      if (done) toast(`Deleted ${done} of ${targets.length} before that.`);
+    } finally {
+      setDeleting(false);
+      setPicked(new Set());
+      reload();
+    }
+  };
   const showFolder = () =>
     void signedAgreementsDir()
       .then((dir) => api.revealFile(dir))
@@ -144,6 +190,9 @@ export function Agreements() {
     <div className="page wide">
       <PageHeader title="Agreements" subtitle="Documents you sent for signature with DeskLab Sign. Signed copies are kept in Documents › DeskFolio › Signed agreements.">
         <button onClick={showFolder}>Signed copies folder</button>
+        <button onClick={exportCsv} disabled={!list?.length} title="Every request shown, one row per person, for Excel">
+          Export CSV…
+        </button>
         <button onClick={reload}>Refresh</button>
       </PageHeader>
       {list === null && <div className="card muted">Loading…</div>}
@@ -179,9 +228,36 @@ export function Agreements() {
         </div>
       )}
       {!!list?.length && !shown.length && <div className="card muted">No requests match.</div>}
+      {closedShown.length > 0 && (
+        <div className="ag-bulk small">
+          <label className="check-row">
+            <input
+              type="checkbox"
+              className="pick"
+              checked={pickedShown.length === closedShown.length}
+              ref={(el) => {
+                if (el) el.indeterminate = pickedShown.length > 0 && pickedShown.length < closedShown.length;
+              }}
+              onChange={(e) => setPicked(e.target.checked ? new Set(closedShown.map((r) => r.id)) : new Set())}
+            />
+            <span>{pickedShown.length ? `${pickedShown.length} selected` : `Select finished requests (${closedShown.length})`}</span>
+          </label>
+          {pickedShown.length > 0 && (
+            <button className="danger" disabled={deleting} onClick={() => void deletePicked()}>
+              {deleting ? "Deleting…" : `Delete ${pickedShown.length}`}
+            </button>
+          )}
+        </div>
+      )}
       <div className="ag-list">
         {shown.map((r) => (
           <div key={r.id} className={open === r.id ? "card ag-item on" : "card ag-item"}>
+            <div className="ag-row">
+            {!["sent", "signed"].includes(r.status) ? (
+              <input type="checkbox" className="pick ag-pick" checked={picked.has(r.id)} onChange={() => toggle(r.id)} aria-label={`Select "${r.title}"`} />
+            ) : (
+              closedShown.length > 0 && <span className="ag-pick ag-pick-space" aria-hidden="true" />
+            )}
             <button className="ag-head" onClick={() => setOpen(open === r.id ? null : r.id)} aria-expanded={open === r.id}>
               <span className="ag-title">
                 <b>{r.title}</b>
@@ -195,10 +271,60 @@ export function Agreements() {
                 <span className={`ag-status ${tone(r.status)}`}>{STATUS[r.status]}</span>
               </span>
             </button>
+            </div>
             {open === r.id && <Detail req={r} onChange={reload} />}
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** "2026-11-20" in local time, for a date input. */
+const dateInput = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/** While people are still signing: move the deadline, or change how often reminders go. */
+function Deadline({ req, onChange }: { req: SignRequest; onChange: () => void }) {
+  const [day, setDay] = useState(() => dateInput(new Date(req.expiresAt)));
+  const [every, setEvery] = useState(req.reminderDays);
+  const [busy, setBusy] = useState(false);
+  const min = dateInput(new Date(Date.now() + 86_400_000));
+  const max = dateInput(new Date(Date.now() + 119 * 86_400_000));
+  const same = day === dateInput(new Date(req.expiresAt)) && every === req.reminderDays;
+  const save = async () => {
+    setBusy(true);
+    try {
+      // The end of the chosen day, local time.
+      const [y, m, d] = day.split("-").map(Number);
+      const end = new Date(y, m - 1, d, 23, 59, 0);
+      const r = await changeSettings(req.id, { reminderDays: every, ...(day !== dateInput(new Date(req.expiresAt)) ? { expiresAt: end.toISOString() } : {}) });
+      toast(r.changed.length ? "Changed. People see the new deadline on their signing page." : "Nothing changed.");
+      onChange();
+    } catch (e) {
+      toastError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="ag-deadline">
+      <label className="field">
+        <span>Deadline</span>
+        <input type="date" value={day} min={min} max={max} onChange={(e) => setDay(e.target.value)} />
+      </label>
+      <label className="field">
+        <span>Remind every</span>
+        <select value={every} onChange={(e) => setEvery(Number(e.target.value))}>
+          {[[0, "Never"], [1, "1 day"], [2, "2 days"], [3, "3 days"], [7, "7 days"], [14, "14 days"]].map(([v, l]) => (
+            <option key={v} value={v}>
+              {l}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button disabled={busy || same || !day} onClick={() => void save()}>
+        {busy ? "Saving…" : "Save changes"}
+      </button>
     </div>
   );
 }
@@ -247,6 +373,7 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
             <li key={p.id}>
               <span>
                 {p.name} <span className="muted small">{p.email}</span>
+                {p.hasAccessCode && <span className="ag-code small" title="Opens only with the access code you gave them">access code</span>}
               </span>
               <span className={`ag-pill ${p.status}`}>
                 {p.role === "cc" ? "Gets a copy" : PERSON[p.status]}
@@ -329,6 +456,7 @@ function Detail({ req, onChange }: { req: SignRequest; onChange: () => void }) {
           </button>
         )}
       </div>
+      {req.status === "sent" && <Deadline req={req} onChange={onChange} />}
       {kept && (
         <p className="ag-kept small">
           <span>

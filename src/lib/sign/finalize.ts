@@ -100,6 +100,7 @@ const EVENT_TEXT: Record<string, string> = {
   resent: "Invitation emailed again",
   opened: "Opened the document",
   reminded: "Reminder emailed",
+  changed: "Deadline or reminders changed",
   signed: "Signed",
   "all-signed": "Everyone signed",
   completed: "Final copy made",
